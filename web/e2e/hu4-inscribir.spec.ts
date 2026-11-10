@@ -3,7 +3,7 @@ import {
   ApiUsuario,
   abrirMateria,
   cancelarMaterias,
-  elegirDuelo,
+  elegirMateriaDuelo,
   entrarPorUi,
   redis,
 } from "./ayudas";
@@ -58,12 +58,13 @@ test.describe("HU4 · inscribir en un clic", () => {
     page,
     request,
   }) => {
-    const MATERIA = "ISUMBG093";
     const rival = await ApiUsuario.entrar(request, "est-000001");
     const yo = await ApiUsuario.entrar(request, "est-000002");
-    await cancelarMaterias(rival, [MATERIA]);
-    await cancelarMaterias(yo, [MATERIA]);
-    const { ultimo: ULTIMO, titulo } = await elegirDuelo(rival, yo, MATERIA);
+    const {
+      materiaId: MATERIA,
+      ultimo: ULTIMO,
+      titulo,
+    } = await elegirMateriaDuelo(rival, yo, "ISUMBG093");
     const original = redis.cupos(ULTIMO);
     redis.fijarCupos(ULTIMO, 1);
 
@@ -101,11 +102,9 @@ test.describe("HU4 · inscribir en un clic", () => {
     page,
     request,
   }) => {
-    const MATERIA = "ISUMBG093";
     const rival = await ApiUsuario.entrar(request, "est-000001");
     const yo = await ApiUsuario.entrar(request, "est-000002");
-    await cancelarMaterias(yo, [MATERIA]);
-    const { ultimo: ULTIMO } = await elegirDuelo(rival, yo, MATERIA);
+    const { materiaId: MATERIA, ultimo: ULTIMO } = await elegirMateriaDuelo(rival, yo, "ISUMBG093");
     const original = redis.cupos(ULTIMO);
     redis.fijarCupos(ULTIMO, 1);
 

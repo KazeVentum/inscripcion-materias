@@ -133,6 +133,26 @@ export function catalogoMongo(materiaId: string): NrcApi[] {
  * Elige de la API un NRC que ambos estudiantes pueden inscribir (el "último cupo") en una
  * materia donde `yo` tiene además otro grupo disponible (la alternativa). Nada quemado.
  */
+export async function elegirMateriaDuelo(rival: ApiUsuario, yo: ApiUsuario, preferida: string) {
+  const [a, b] = await Promise.all([rival.materias(), yo.materias()]);
+  const comunes = a
+    .filter(
+      (m) =>
+        m.estado === "pendiente" &&
+        b.some((x) => x.materiaId === m.materiaId && x.estado === "pendiente"),
+    )
+    .map((m) => m.materiaId)
+    .sort((x, y) => Number(y === preferida) - Number(x === preferida));
+  for (const materiaId of comunes) {
+    try {
+      return { materiaId, ...(await elegirDuelo(rival, yo, materiaId)) };
+    } catch {
+      // esa materia no tiene un NRC común con alternativa en ambas jornadas/horarios: probar otra
+    }
+  }
+  throw new Error("Sin materia con NRC común y alternativa para el duelo: ¿make seed?");
+}
+
 export async function elegirDuelo(rival: ApiUsuario, yo: ApiUsuario, materiaId: string) {
   const [delRival, mios] = await Promise.all([rival.nrcDe(materiaId), yo.nrcDe(materiaId)]);
   const comunes = mios.filter((n) => delRival.some((r) => r.nrc === n.nrc));
