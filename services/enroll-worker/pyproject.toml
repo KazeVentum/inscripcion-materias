@@ -1,0 +1,42 @@
+[project]
+name = "inscripcion-enroll-worker"
+version = "0.1.0"
+description = "Worker de confirmación de inscripciones (sistema académico simulado)"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "pydantic~=2.10",
+    "redis~=5.2",
+    "pymongo~=4.13",
+    "aiokafka~=0.12",
+]
+
+[dependency-groups]
+dev = [
+    "mypy~=1.15",
+    "pytest~=8.3",
+    "pytest-asyncio~=0.25",
+    "ruff~=0.9",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "integration: requiere Redis/Mongo de Docker; se salta si no están alcanzables",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+strict = true
+files = ["worker", "tests"]
+
+[[tool.mypy.overrides]]
+module = ["aiokafka", "aiokafka.*"]
+ignore_missing_imports = true

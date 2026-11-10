@@ -40,7 +40,7 @@ Hoy el estudiante inscribe con un Excel de NRC sin cupos ni validación previa.
 
 1. Plan + `CLAUDE.md` + subagentes. ✅
 2. Infra Docker + datos sintéticos cargados. ✅
-3. Backend con inscripción atómica y eventos.
+3. Backend con inscripción atómica y eventos. ✅
 4. Brief de diseño → sistema de diseño en Storybook.
 5. Pantallas del estudiante con cupos en vivo.
 6. Data lake y página de analítica.
@@ -81,18 +81,35 @@ Redpanda en modo dev (`--smp 1 --memory 512M --overprovisioned`).
      Así dos solicitudes simultáneas del mismo estudiante no pueden dejar un cruce.
    - `cupos > 0` (→ `sin_cupo`, la API responde `409` con el NRC alternativo más cercano).
    - `DECR cupos`, `HSET ocupado:{est} {nrc} {"materiaId","bloques"}`,
-     `SET reserva:{est}:{nrc}` con TTL `RESERVA_TTL_S` y
-     `ZADD reservas:pendientes {vencimientoMs} "{est}|{nrc}"`.
-3. Publica en `inscripcion.intentos` (siempre, con su resultado). Clave Kafka = `estudianteId`.
-4. `enroll-worker` consume, confirma contra el sistema académico simulado (Mongo) con
-   `_id = "{periodo}|{est}|{nrc}"` (upsert idempotente), estado `confirmada`, borra la
-   reserva y su miembro de `reservas:pendientes`. Si falla: estado `rechazada` y devolución.
-5. **Devolución de cupo** (rechazo, cancelación o conciliación) también en Lua:
-   `INCR cupos` sin superar `cupototal:{periodo}:{nrc}`, `HDEL ocupado`, `DEL reserva`, `ZREM`.
+     `SET reserva:{est}:{nrc} {reservaId}` con TTL `RESERVA_TTL_S`,
+     `ZADD reservas:pendientes {vencimientoMs} "{est}|{nrc}"` y `PUBLISH cupos:{periodo}`.
+3. Publica en `inscripcion.intentos` (siempre, con su resultado y `reservaId`). Clave Kafka =
+   `estudianteId`. Si el intento exitoso no se puede publicar (`send_and_wait` falla), la API
+   devuelve el cupo y responde `503`: nunca promete una reserva que el worker no verá.
+4. `enroll-worker` consume y confirma contra el sistema académico simulado (Mongo):
+   - Idempotencia **por estado**: si la inscripción ya es terminal, no toca Redis.
+   - **Mongo primero**: upsert `confirmada` en `_id = "{periodo}|{est}|{nrc}"` sin pisar
+     `cancelada`; después `consolidar.lua` borra la reserva (solo si su `reservaId` coincide) y
+     su miembro del ZSET. Si el worker cae entre ambos pasos, la conciliación lo cierra.
+   - Si el sistema académico falla: `rechazada` y devolución en modo `conciliar`.
+   - Eventos inválidos o que fallan 3 veces van a `inscripcion.dlq`; el worker no se detiene.
+5. **Devolución de cupo** (rechazo, cancelación o conciliación) también en Lua (`devolver.lua`):
+   idempotente (solo si `ocupado` aún tiene el NRC), `INCR cupos` sin superar `cupototal`,
+   `HDEL ocupado`, `DEL reserva`, `ZREM`, `PUBLISH`. Si falta `cupototal`, error sin escribir.
+   Cancelación: Mongo `cancelada` primero, luego `devolver.lua`.
 6. Conciliación cada 30 s en `enroll-worker`: `ZRANGEBYSCORE reservas:pendientes -inf {ahora}`
-   → si no hay inscripción confirmada en Mongo, devuelve el cupo.
-7. Cada cambio de cupo se publica en Redis Pub/Sub `cupos:{periodo}` → la API lo emite
-   por **SSE** (`GET /stream/cupos`) a la UI.
+   → si Mongo ya dice `confirmada`, solo `ZREM`; si no, devuelve el cupo y marca `rechazada`
+   (motivo `reserva_vencida`).
+7. Cada cambio de cupo sale de los Lua por Redis Pub/Sub `cupos:{periodo}` con
+   `{nrc, libres}` → la API lo emite por **SSE** (`GET /stream/cupos?ticket=`). El ticket se
+   pide con `POST /stream/ticket` (JWT `aud=stream`, 60 s); el JWT de sesión nunca va en la URL.
+
+Los scripts Lua viven solo en `services/lua/` y se copian a las imágenes de api y worker.
+
+**Límite conocido de la simulación:** Redis es la única copia viva de `ocupado` y de los
+cupos durante el periodo; si se pierde, se reconstruye con `make seed` (no hay job de
+reconstrucción Mongo → Redis). En producción haría falta ese job y claves con hash tags
+para Redis Cluster.
 
 ### Tópicos Redpanda
 
@@ -101,6 +118,10 @@ Redpanda en modo dev (`--smp 1 --memory 512M --overprovisioned`).
 | `inscripcion.intentos` | api | enroll-worker, lake-worker |
 | `inscripcion.resultados` | enroll-worker | lake-worker |
 | `oferta.busquedas` | api | lake-worker |
+| `inscripcion.dlq` | enroll-worker | (inspección manual) |
+
+`inscripcion.intentos` lleva eventos `tipo=intento` y `tipo=cancelacion`; los consumidores
+filtran por `tipo`.
 
 Envelope de evento (JSON):
 
@@ -109,12 +130,19 @@ Envelope de evento (JSON):
   "eventId": "uuid", "tipo": "intento|confirmacion|cancelacion|busqueda",
   "ocurridoEn": "2026-11-09T21:00:00.123Z", "periodo": "2027-1",
   "estudianteId": "est-000123", "nrc": "80852", "materiaId": "ISUMBG103",
-  "resultado": "exito|sin_cupo|cruce|prerrequisito|error",
+  "resultado": "exito|sin_cupo|cruce|prerrequisito|ya_inscrita|materia_aprobada|rechazada|error",
   "latenciaMs": 12, "alternativaNrc": "86366"
 }
 ```
 
-`estudianteId` es un identificador sintético; en plata/oro se usa hash (SHA-256 con sal).
+Campos opcionales: `reservaId` (intentos exitosos y confirmaciones), `motivo` (rechazos y
+errores: `reserva_vencida`, `sistema_academico_no_disponible`…), `conflicto` (NRC con el que
+cruza), `resultados` (cantidad de NRC devueltos en una búsqueda), `eventoOrigen` (eventId del
+intento que originó una confirmación). Las confirmaciones del worker usan `resultado: exito`
+o `rechazada`; las de conciliación llevan `latenciaMs: 0`.
+
+`estudianteId` es un identificador sintético. En plata/oro se usa hash (SHA-256 con sal). En
+producción tampoco iría en claro en logs (Ley 1581 de 2012).
 
 ## Modelo de datos
 
@@ -164,15 +192,20 @@ NRC de ejemplo (el horario va embebido):
 ### Inscripciones
 
 `_id = "{periodo}|{estudianteId}|{nrc}"`. Estados: `reservada → confirmada | rechazada`,
-`confirmada → cancelada`. Campos: `estudianteId`, `nrc`, `materiaId`, `periodo`, `estado`,
-`creadaEn`, `actualizadaEn` (UTC). Un estudiante no tiene dos inscripciones activas de la
-misma materia.
+`reservada | confirmada → cancelada`. `reservada` vive solo en Redis (clave `reserva:`);
+Mongo guarda `confirmada`, `rechazada` y `cancelada` (por upsert). Campos: `estudianteId`,
+`nrc`, `materiaId`, `periodo`, `estado`, `motivo?`, `creadaEn`, `actualizadaEn` (UTC). Un
+estudiante no tiene dos inscripciones activas de la misma materia.
+
+`eventos_procesados` (índice TTL 24 h) registra los eventId ya procesados por el worker; es
+una optimización, la garantía de idempotencia es la regla por estado.
 
 ### Login simulado (Entra ID)
 
 `POST /api/v1/auth/login` con `estudianteId` (o correo sintético) y `DEMO_PASSWORD`,
-igual para todos los estudiantes sintéticos. Devuelve JWT HS256 (`JWT_SECRET`, expira
-en `JWT_TTL_MIN`). Demos: `est-000001` (1.er semestre), `est-000002` (clase MAR/JUE 20:30,
+igual para todos los estudiantes sintéticos. Devuelve JWT HS256 (`JWT_SECRET` ≥ 32 bytes,
+expira en `JWT_TTL_MIN`, exige `exp`/`sub`/`iat`, `aud=inscripcion-api`), con límite de 10
+intentos fallidos por minuto por usuario. Demos: `est-000001` (1.er semestre), `est-000002` (clase MAR/JUE 20:30,
 HU3), `est-000003` (6.º), `est-000004` (9.º, habilitada para Práctica), `est-000005` (rezago).
 `franja` usa los valores `mañana | tarde | noche`.
 

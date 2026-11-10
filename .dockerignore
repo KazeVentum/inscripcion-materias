@@ -1,0 +1,12 @@
+.git
+docs
+.claude
+data/seed/out
+**/.venv
+**/__pycache__
+**/.mypy_cache
+**/.ruff_cache
+**/.pytest_cache
+**/node_modules
+web
+.env

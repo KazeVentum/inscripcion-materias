@@ -118,14 +118,76 @@ services:
       - /bin/sh
       - -c
       - |
-        for t in inscripcion.intentos inscripcion.resultados oferta.busquedas; do
+        for t in inscripcion.intentos inscripcion.resultados oferta.busquedas inscripcion.dlq; do
           rpk topic create $$t -p 3 -r 1 -X brokers=redpanda:9092 || true
         done &&
         rpk topic list -X brokers=redpanda:9092
     networks: [inscripcion]
 
-  # api:            # fase 3 (FastAPI, puerto 8000)
-  # enroll-worker:  # fase 3 (confirmacion contra Mongo)
+  # --- Fase 3: backend (build local; contexto = raiz del repo porque copia services/lua) ---
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    <<: *restart
+    mem_limit: 256m
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    ports: ["127.0.0.1:8000:8000"]
+    environment:
+      MONGO_URL: mongodb://mongo:27017/inscripcion
+      REDIS_URL: redis://redis:6379/0
+      KAFKA_BROKERS: redpanda:9092
+      PERIODO: ${PERIODO:-2027-1}
+      JWT_SECRET: ${JWT_SECRET:?falta JWT_SECRET en .env}
+      JWT_TTL_MIN: ${JWT_TTL_MIN:-60}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:?falta DEMO_PASSWORD en .env}
+      RESERVA_TTL_S: ${RESERVA_TTL_S:-300}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      redpanda: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8000/api/v1/health', timeout=4)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks: [inscripcion]
+
+  enroll-worker:
+    build:
+      context: .
+      dockerfile: services/enroll-worker/Dockerfile
+    <<: *restart
+    mem_limit: 256m
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      MONGO_URL: mongodb://mongo:27017/inscripcion
+      REDIS_URL: redis://redis:6379/0
+      KAFKA_BROKERS: redpanda:9092
+      PERIODO: ${PERIODO:-2027-1}
+      RESERVA_TTL_S: ${RESERVA_TTL_S:-300}
+      FALLO_SISTEMA_ACADEMICO: ${FALLO_SISTEMA_ACADEMICO:-0.0}
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      redpanda: { condition: service_healthy }
+    healthcheck:
+      # el worker no expone HTTP: escribe /tmp/heartbeat cada 5 s mientras su bucle esta vivo
+      test: ["CMD", "python", "-c", "import os,time,sys; sys.exit(0 if time.time()-os.path.getmtime('/tmp/heartbeat')<30 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks: [inscripcion]
+
   # lake-worker:    # fase 6 (bronce -> plata -> oro con DuckDB)
   # web:            # fase 5 (Next.js, puerto 3000)
 

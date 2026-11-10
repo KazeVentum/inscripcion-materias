@@ -1,0 +1,50 @@
+[project]
+name = "inscripcion-api"
+version = "0.1.0"
+description = "API de inscripción de asignaturas (simulación UNIMINUTO)"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi~=0.115",
+    "uvicorn~=0.34",
+    "pydantic~=2.10",
+    "redis~=5.2",
+    "pymongo~=4.13",
+    "aiokafka~=0.12",
+    "pyjwt~=2.10",
+]
+
+[dependency-groups]
+dev = [
+    "httpx~=0.28",
+    "mypy~=1.15",
+    "pytest~=8.3",
+    "pytest-asyncio~=0.25",
+    "ruff~=0.9",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    "ignore::jwt.warnings.InsecureKeyLengthWarning",
+    "ignore::DeprecationWarning",
+]
+markers = [
+    "integration: requiere Redis/Mongo (y Redpanda) de Docker; se salta si no están alcanzables",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+strict = true
+files = ["app", "tests"]
+
+[[tool.mypy.overrides]]
+module = ["aiokafka", "aiokafka.*"]
+ignore_missing_imports = true
