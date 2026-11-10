@@ -103,6 +103,35 @@ def check(data: dict[str, list[dict[str, Any]]]) -> list[str]:
         if e["creditosAprobados"] != _creditos(materias, aprobadas):
             errores.append(f"{eid}: creditosAprobados no coincide con sus materias")
 
+    # Jornada: valor válido y oferta mínima por ventana
+    for eid, e in estudiantes.items():
+        if e.get("jornada") not in rules.JORNADAS:
+            errores.append(f"{eid}: jornada inválida {e.get('jornada')!r}")
+    por_materia_nrc: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for n in data["nrc"]:
+        por_materia_nrc[n["materiaId"]].append(n)
+    for mid in materias:
+        if not any(rules.en_jornada(n["bloques"], "noche") for n in por_materia_nrc[mid]):
+            errores.append(f"materia {mid} sin NRC en la ventana noche")
+    tarde = estudiantes.get("est-000006")
+    if tarde is not None:
+        if tarde.get("jornada") != "tarde":
+            errores.append("est-000006 debe ser de jornada tarde")
+        libres_nrc = _libres_por_nrc(data)
+        aprob = set(tarde["materiasAprobadas"])
+        for mid in materias:
+            if mid in aprob or any(p not in aprob for p in prereq.get(mid, [])):
+                continue
+            if mid in minimos and _creditos(materias, aprob) < minimos[mid]:
+                continue
+            if materias[mid]["semestre"] > tarde["semestre"]:
+                continue
+            if not any(
+                rules.en_jornada(n["bloques"], "tarde") and libres_nrc[n["nrc"]] > 0
+                for n in por_materia_nrc[mid]
+            ):
+                errores.append(f"est-000006: materia habilitada {mid} sin NRC de tarde con cupo")
+
     # Inscripciones: habilitación, cruces, cupos
     por_estudiante: dict[str, list[dict[str, Any]]] = defaultdict(list)
     confirmadas: Counter[str] = Counter()
@@ -126,6 +155,9 @@ def check(data: dict[str, list[dict[str, Any]]]) -> list[str]:
             errores.append(f"{eid}: inscrito en {mid} sin prerrequisitos {faltan}")
         if mid in minimos and _creditos(materias, aprobadas) < minimos[mid]:
             errores.append(f"{eid}: inscrito en {mid} sin créditos mínimos")
+        jornada = estudiantes[eid].get("jornada")
+        if jornada in rules.JORNADAS and not rules.en_jornada(n["bloques"], jornada):
+            errores.append(f"{eid}: inscrito en NRC {nrc} fuera de su jornada {jornada}")
         if ins["estado"] == "confirmada":
             confirmadas[nrc] += 1
         por_estudiante[eid].append(ins)
@@ -220,7 +252,7 @@ def resumen(data: dict[str, list[dict[str, Any]]]) -> dict[str, Any]:
         "nrc_1_libre": sum(1 for v in libres.values() if v == 1),
         "nrc_mas_80_libres": sum(1 for n in nrcs if libres[n["nrc"]] > 0.8 * n["cupoTotal"]),
         "demo": [
-            {"estudianteId": e["estudianteId"], "semestre": e["semestre"], "perfil": e.get("perfilDemo")}
+            {"estudianteId": e["estudianteId"], "semestre": e["semestre"], "jornada": e.get("jornada"), "perfil": e.get("perfilDemo")}
             for e in data["estudiantes"]
             if e.get("demo")
         ],

@@ -27,13 +27,18 @@ from . import rules
 
 DEFAULT_SEED = 20271
 DEFAULT_PERIODO = "2027-1"
-N_ESTUDIANTES = 2000
-N_DOCENTES = 110
+N_ESTUDIANTES = 3500
+N_DOCENTES = 300
 PROGRAMA_ID = "ISIS-2019"
 DOMINIO_CORREO = "sintetico.uniminuto.test"
 
 # Pesos (los de la referencia son conteos; se normalizan con rng.choices).
-PESOS_FRANJA = {"mañana": 0.24, "tarde": 0.29, "noche": 0.47}
+# Sesgo hacia la noche: casi todos los estudiantes son nocturnos (la referencia real es 0.24/0.29/0.47).
+PESOS_FRANJA = {"mañana": 0.06, "tarde": 0.22, "noche": 0.72}
+# NRC por materia según semestre (los semestres bajos tienen más demanda).
+RANGO_NRC_SEMESTRE = ((3, (12, 15)), (6, (10, 12)), (10, (7, 9)))
+MIN_NRC_NOCHE = 3
+MIN_NRC_TARDE = 2
 PESOS_MODALIDAD = {"presencial": 0.887, "virtual": 0.077, "sincronica": 0.035}
 PESOS_SEDE = {"Calle 80": 0.70, "Perdomo": 0.20, "San Camilo": 0.10}
 PESOS_SEMESTRE = (0.12, 0.11, 0.11, 0.11, 0.10, 0.10, 0.09, 0.09, 0.09, 0.08)
@@ -44,6 +49,7 @@ _CUPO_CUANTILES = ((0.0, 1.0), (0.10, 4.0), (0.50, 15.0), (0.90, 29.0), (1.0, 35
 
 # NRC de demostración para HU3: clase martes y jueves 20:30 (materia de semestre 4).
 DEMO_MATERIA = "ISUMBG193"
+DEMO_NRC = "64269"  # NRC fijo del demo HU3 (lo usan las pruebas e2e)
 # Electivas que el demo de semestre 9 no ha aprobado (deja 120 créditos).
 DEMO_9_ELECTIVAS_NO_APROBADAS = frozenset({"ISUMBG014", "ISUMBG042", "ISUMBG044", "ISUMBG022", "ISUMBG093"})
 
@@ -286,6 +292,10 @@ def _bloques(
     return salida
 
 
+def _rango_nrc(semestre: int) -> tuple[int, int]:
+    return next(r for tope, r in RANGO_NRC_SEMESTRE if semestre <= tope)
+
+
 def _garantizar_jornadas(
     rng: random.Random,
     mid: str,
@@ -297,30 +307,51 @@ def _garantizar_jornadas(
     opciones_franja: dict[str, tuple[list[tuple[str, str]], list[int]]],
     protegido: str | None,
 ) -> None:
-    """Cada materia tiene al menos un NRC en la ventana noche y otro en la ventana tarde.
+    """Cada materia tiene al menos MIN_NRC_NOCHE NRC en la ventana noche y MIN_NRC_TARDE en la
+    ventana tarde, con horarios distintos (día y hora de inicio) para que haya opciones reales.
 
-    Un NRC virtual (sin bloques) ya cumple ambas. Si falta una ventana se reescribe el horario
-    de un NRC que no sea el único de la otra ventana.
+    Los virtuales no cuentan (no son una opción de horario). Si falta oferta se reescribe el
+    horario de un NRC que no esté ya contado en la otra ventana.
     """
     docs = {d["nrc"]: d for d in nrc_docs if d["materiaId"] == mid}
-    for jornada in rules.JORNADAS:
-        if any(rules.en_jornada(meta[n]["bloques"], jornada) for n in nrcs):
-            continue
-        otra = next(j for j in rules.JORNADAS if j != jornada)
-        unicos = {n for n in nrcs if rules.en_jornada(meta[n]["bloques"], otra)}
-        solos = unicos if len(unicos) == 1 else set()
-        candidatos = [n for n in nrcs if n != protegido and n not in solos]
-        sin_ventana = [n for n in candidatos if n not in unicos]
-        elegido = (sin_ventana or candidatos)[-1]
-        doc = docs[elegido]
-        if doc["modalidad"] == "virtual":
-            doc["modalidad"] = "presencial"
-        franja = "noche" if jornada == "noche" else "tarde"
-        edificio = rng.choice(edificios[doc["sede"]])
-        bloques = _bloques(rng, doc["modalidad"], franja, edificio, patrones, opciones_franja, jornada)
-        doc["bloques"] = bloques
-        doc["franja"] = franja
-        meta[elegido]["bloques"] = bloques
+
+    def firma(n: str) -> tuple[tuple[str, str], ...]:
+        return tuple((b["dia"], b["inicio"]) for b in meta[n]["bloques"])
+
+    contados: dict[str, set[str]] = {}
+    for jornada, minimo in (("noche", MIN_NRC_NOCHE), ("tarde", MIN_NRC_TARDE)):
+        firmas: set[tuple[tuple[str, str], ...]] = set()
+        propios: set[str] = set()
+        for n in nrcs:
+            f = firma(n)
+            if f and f not in firmas and rules.en_jornada(meta[n]["bloques"], jornada):
+                firmas.add(f)
+                propios.add(n)
+        ajenos = {n for j, c in contados.items() if j != jornada for n in c}
+        while len(propios) < minimo:
+            libres = [n for n in nrcs if n not in propios and n not in ajenos and n != protegido]
+            if not libres:
+                raise RuntimeError(f"materia {mid}: no hay NRC para completar la ventana {jornada}")
+            elegido = rng.choice(libres)
+            doc = docs[elegido]
+            if doc["modalidad"] == "virtual":
+                doc["modalidad"] = "presencial"
+            edificio = rng.choice(edificios[doc["sede"]])
+            for _ in range(50):
+                bloques = _bloques(rng, doc["modalidad"], jornada, edificio, patrones, opciones_franja, jornada)
+                f = tuple((b["dia"], b["inicio"]) for b in bloques)
+                if f not in firmas:
+                    break
+            else:
+                raise RuntimeError(f"materia {mid}: sin horarios distintos en la ventana {jornada}")
+            doc["bloques"] = bloques
+            doc["franja"] = jornada
+            meta[elegido]["bloques"] = bloques
+            firmas.add(f)
+            propios.add(elegido)
+        # solo se protegen MIN NRC de la ventana; el resto queda libre para reescribirse
+        orden = sorted(propios, key=lambda n: (n != protegido, nrcs.index(n)))
+        contados[jornada] = set(orden[:minimo])
 
 
 def _aprobar(
@@ -484,8 +515,17 @@ def build(
         pesos.append(int(b["frecuencia"]))
 
     # NRC ----------------------------------------------------------------------------
-    n_por_materia = {m["materiaId"]: rng.randint(3, 6) for m in materias_src}
+    n_por_materia = {m["materiaId"]: rng.randint(*_rango_nrc(m["semestre"])) for m in materias_src}
     numeros = [str(n) for n in rng.sample(range(10000, 100000), sum(n_por_materia.values()))]
+    # el NRC del demo HU3 tiene número fijo: ningún otro NRC lo usa
+    primero_demo = 0
+    for m in materias_src:
+        if m["materiaId"] == DEMO_MATERIA:
+            break
+        primero_demo += n_por_materia[m["materiaId"]]
+    numeros = [x for x in numeros if x != DEMO_NRC]
+    numeros.insert(primero_demo, DEMO_NRC)
+    numeros = numeros[: sum(n_por_materia.values())]
     nrc_docs: list[dict[str, Any]] = []
     meta: dict[str, dict[str, Any]] = {}
     nrc_por_materia: dict[str, list[str]] = {}
