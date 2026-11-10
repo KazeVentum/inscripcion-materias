@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAvisos } from "@/components/pantallas/Avisos";
 import { ApiError, api } from "@/lib/api/cliente";
-import { aplicarCupo, claves } from "@/lib/api/consultas";
+import { aplicarCupo, claves, leerHorario } from "@/lib/api/consultas";
 import { esperarConfirmacion, mensajeIntentoFallido, TEXTO_RECHAZADA } from "@/lib/inscribir";
 import type { HorarioOut, NrcOut } from "@/lib/tipos";
 
@@ -18,8 +18,8 @@ export type FaseInscripcion = { fase: "inscribiendo" } | { fase: "reservada"; ve
 export function useRefrescar() {
   const qc = useQueryClient();
   return useCallback(() => {
-    void qc.invalidateQueries({ queryKey: claves.horario });
-    void qc.invalidateQueries({ queryKey: claves.materias });
+    void qc.invalidateQueries({ queryKey: claves.horarioTodos });
+    void qc.invalidateQueries({ queryKey: claves.materiasTodas });
     void qc.invalidateQueries({ queryKey: claves.nrcTodos });
   }, [qc]);
 }
@@ -88,7 +88,7 @@ export function useInscripcion() {
         const reserva = await api.inscribir({ nrc: nrc.nrc });
         aplicarCupo(qc, nrc.nrc, reserva.cuposLibres);
         poner(nrc.nrc, { fase: "reservada", vencimiento: reserva.vencimiento });
-        void qc.invalidateQueries({ queryKey: claves.horario });
+        void qc.invalidateQueries({ queryKey: claves.horarioTodos });
 
         const final = await esperarConfirmacion(nrc.nrc, {
           consultar: (n, signal) => api.estadoInscripcion(n, signal),
@@ -109,7 +109,7 @@ export function useInscripcion() {
           setAlternativas((m) => ({ ...m, [nrc.nrc]: err.alternativa }));
           return;
         }
-        const horario = qc.getQueryData<HorarioOut>(claves.horario);
+        const horario = leerHorario(qc);
         avisos.error(mensajeIntentoFallido(err, nrc, horario));
         // Si falló tras reservar (p. ej. el seguimiento), el estado real está en el servidor.
         refrescar();

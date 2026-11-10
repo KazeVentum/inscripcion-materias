@@ -42,8 +42,8 @@ export function useCuposEnVivo(
         }),
       onResincronizar: () => {
         void qc.invalidateQueries({ queryKey: claves.nrcTodos });
-        void qc.invalidateQueries({ queryKey: claves.horario });
-        void qc.invalidateQueries({ queryKey: claves.materias });
+        void qc.invalidateQueries({ queryKey: claves.horarioTodos });
+        void qc.invalidateQueries({ queryKey: claves.materiasTodas });
       },
       onSesionExpirada: cerrarSesion,
       ...inyectar,

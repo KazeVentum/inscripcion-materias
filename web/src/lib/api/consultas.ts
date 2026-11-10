@@ -2,12 +2,18 @@ import { QueryClient, type QueryKey } from "@tanstack/react-query";
 import { ApiError } from "./cliente";
 import type { HorarioOut, MateriaHabilitadaOut, NrcOut } from "@/lib/tipos";
 
+/**
+ * Toda clave lleva al estudiante: aunque la caché sobreviviera a un cambio de sesión, los
+ * datos de uno nunca se leerían como del otro. Los `*Todos` son prefijos para invalidar.
+ */
 export const claves = {
-  perfil: ["perfil"] as const,
-  materias: ["materias"] as const,
-  horario: ["horario"] as const,
+  perfil: (est: string | null) => ["perfil", est] as const,
+  materias: (est: string | null) => ["materias", est] as const,
+  horario: (est: string | null) => ["horario", est] as const,
+  nrcDe: (est: string | null, materiaId: string) => ["nrc", est, materiaId] as const,
+  materiasTodas: ["materias"] as const,
+  horarioTodos: ["horario"] as const,
   nrcTodos: ["nrc"] as const,
-  nrcDe: (materiaId: string) => ["nrc", materiaId] as const,
 };
 
 export function crearQueryClient(): QueryClient {
@@ -32,7 +38,7 @@ export function aplicarCupo(qc: QueryClient, nrc: string, libres: number): void 
     if (!lista?.some((n) => n.nrc === nrc && n.cuposLibres !== libres)) return lista;
     return lista.map((n) => (n.nrc === nrc ? { ...n, cuposLibres: libres } : n));
   });
-  qc.setQueryData<HorarioOut>(claves.horario, (h) => {
+  qc.setQueriesData<HorarioOut>({ queryKey: claves.horarioTodos }, (h) => {
     if (!h?.inscripciones.some((i) => i.nrc === nrc && i.cuposLibres !== libres)) return h;
     return {
       ...h,
@@ -53,7 +59,11 @@ export function buscarNrc(qc: QueryClient, nrc: string): NrcOut | undefined {
 }
 
 export function leerMaterias(qc: QueryClient): MateriaHabilitadaOut[] | undefined {
-  return qc.getQueryData<MateriaHabilitadaOut[]>(claves.materias);
+  return qc.getQueriesData<MateriaHabilitadaOut[]>({ queryKey: claves.materiasTodas })[0]?.[1];
+}
+
+export function leerHorario(qc: QueryClient): HorarioOut | undefined {
+  return qc.getQueriesData<HorarioOut>({ queryKey: claves.horarioTodos })[0]?.[1];
 }
 
 export type ClaveConsulta = QueryKey;

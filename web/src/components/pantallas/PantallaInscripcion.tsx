@@ -15,6 +15,7 @@ import { EstadoVacio } from "@/components/estados/EstadoVacio";
 import { BandejaAccion } from "@/components/ui/BandejaAccion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { ErrorRed } from "@/lib/api/cliente";
+import { useSesion } from "@/lib/api/sesion";
 import { claves } from "@/lib/api/consultas";
 import { useHorario, useMaterias } from "@/lib/api/hooks";
 import { alternativaLocal } from "@/lib/alternativa";
@@ -53,6 +54,7 @@ function agrupar(materias: readonly MateriaHabilitadaOut[]): [number, MateriaHab
 
 export function PantallaInscripcion() {
   const qc = useQueryClient();
+  const sesion = useSesion();
   const materiasQ = useMaterias();
   const horarioQ = useHorario();
   const conexion = useCuposEnVivo();
@@ -73,7 +75,8 @@ export function PantallaInscripcion() {
 
   const alternativaDe = (n: NrcOut): NrcOut | null => {
     if (n.nrc in alternativas) return alternativas[n.nrc] ?? null;
-    const grupos = qc.getQueryData<NrcOut[]>(claves.nrcDe(n.materiaId)) ?? [];
+    const grupos =
+      qc.getQueryData<NrcOut[]>(claves.nrcDe(sesion?.estudianteId ?? null, n.materiaId)) ?? [];
     return alternativaLocal(n, grupos, ocupados);
   };
 

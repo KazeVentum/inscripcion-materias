@@ -27,7 +27,7 @@ const nrc: NrcOut = {
 
 function montar() {
   const qc = crearQueryClient();
-  qc.setQueryData(claves.nrcDe("ISUMBG103"), [nrc]);
+  qc.setQueryData(claves.nrcDe("est-1", "ISUMBG103"), [nrc]);
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={qc}>{children}</QueryClientProvider>
   );
@@ -67,7 +67,7 @@ describe("useInscripcion", () => {
     act(() => void result.current.inscribir(nrc));
     await waitFor(() => expect(result.current.fases["80852"]?.fase).toBe("reservada"));
     // el cupo de la respuesta 202 ya está en la caché
-    expect(qc.getQueryData<NrcOut[]>(claves.nrcDe("ISUMBG103"))?.[0]?.cuposLibres).toBe(0);
+    expect(qc.getQueryData<NrcOut[]>(claves.nrcDe("est-1", "ISUMBG103"))?.[0]?.cuposLibres).toBe(0);
 
     await waitFor(
       () => expect(avisos.inscrita).toHaveBeenCalledWith("Sistemas Operativos", "80852"),
@@ -111,7 +111,7 @@ describe("useInscripcion", () => {
     });
     expect(result.current.alternativas["80852"]).toEqual(alternativa);
     expect(result.current.fases).toEqual({});
-    expect(qc.getQueryData<NrcOut[]>(claves.nrcDe("ISUMBG103"))?.[0]?.cuposLibres).toBe(0);
+    expect(qc.getQueryData<NrcOut[]>(claves.nrcDe("est-1", "ISUMBG103"))?.[0]?.cuposLibres).toBe(0);
     expect(avisos.error).not.toHaveBeenCalled();
   });
 

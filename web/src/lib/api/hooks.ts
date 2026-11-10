@@ -13,7 +13,7 @@ function useEstudiante(): string | null {
 export function usePerfil() {
   const est = useEstudiante();
   return useQuery({
-    queryKey: [...claves.perfil, est],
+    queryKey: claves.perfil(est),
     queryFn: ({ signal }) => api.perfil(signal),
     enabled: est !== null,
     staleTime: 5 * 60_000,
@@ -23,7 +23,7 @@ export function usePerfil() {
 export function useMaterias() {
   const est = useEstudiante();
   return useQuery({
-    queryKey: claves.materias,
+    queryKey: claves.materias(est),
     queryFn: ({ signal }) => api.materias(signal),
     enabled: est !== null,
   });
@@ -32,7 +32,7 @@ export function useMaterias() {
 export function useHorario() {
   const est = useEstudiante();
   return useQuery({
-    queryKey: claves.horario,
+    queryKey: claves.horario(est),
     queryFn: ({ signal }) => api.horario(signal),
     enabled: est !== null,
     // Con una reserva viva, el horario se refresca solo hasta que el worker confirme.
@@ -44,7 +44,7 @@ export function useHorario() {
 export function useNrcDe(materiaId: string, habilitado = true) {
   const est = useEstudiante();
   return useQuery({
-    queryKey: claves.nrcDe(materiaId),
+    queryKey: claves.nrcDe(est, materiaId),
     queryFn: ({ signal }) => api.nrcDe(materiaId, signal),
     enabled: est !== null && habilitado,
     // Un NRC que se agota queda en pantalla (con su alternativa) en vez de desaparecer

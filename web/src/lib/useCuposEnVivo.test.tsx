@@ -41,7 +41,7 @@ const nrc = (n: string, libres: number): NrcOut => ({
 
 function montar(habilitado = true) {
   const qc = crearQueryClient();
-  qc.setQueryData(claves.nrcDe("M"), [nrc("1", 3), nrc("2", 9)]);
+  qc.setQueryData(claves.nrcDe("est-1", "M"), [nrc("1", 3), nrc("2", 9)]);
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={qc}>{children}</QueryClientProvider>
   );
@@ -73,7 +73,7 @@ describe("useCuposEnVivo", () => {
     act(() =>
       Fuente.ultima!.oyentes.cupo?.({ data: '{"nrc":"1","libres":0}' } as MessageEvent<string>),
     );
-    const lista = qc.getQueryData<NrcOut[]>(claves.nrcDe("M"))!;
+    const lista = qc.getQueryData<NrcOut[]>(claves.nrcDe("est-1", "M"))!;
     expect(lista[0]?.cuposLibres).toBe(0);
     expect(lista[1]?.cuposLibres).toBe(9);
   });
