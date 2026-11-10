@@ -1,0 +1,45 @@
+[project]
+name = "inscripcion-lake"
+version = "0.1.0"
+description = "Data lake medallon (bronce, plata, oro) sobre MinIO con DuckDB"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "aiokafka~=0.12",
+    "duckdb~=1.4",
+    "minio~=7.2",
+    "pymongo~=4.13",
+    "redis~=5.2",
+]
+
+[dependency-groups]
+dev = [
+    "httpx~=0.28",
+    "mypy~=1.15",
+    "pytest~=8.3",
+    "pytest-asyncio~=0.25",
+    "ruff~=0.9",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "integration: requiere el stack de Docker (make up); se salta si no esta alcanzable",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]  # SQL embebido en cadenas
+
+[tool.mypy]
+strict = true
+files = ["lake", "tests"]
+
+[[tool.mypy.overrides]]
+module = ["aiokafka", "aiokafka.*", "duckdb", "duckdb.*"]
+ignore_missing_imports = true
