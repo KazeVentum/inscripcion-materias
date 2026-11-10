@@ -21,8 +21,8 @@ const DEMOS = [
 ] as const;
 
 /** Solo rutas internas: evita redirigir a otro sitio con ?siguiente=. */
-function destinoSeguro(siguiente: string | null): string {
-  return siguiente && /^\/(?!\/)/.test(siguiente) ? siguiente : "/inscripcion";
+export function destinoSeguro(siguiente: string | null): string {
+  return siguiente && /^\/(?![/\\])/.test(siguiente) ? siguiente : "/inscripcion";
 }
 
 export function PantallaLogin() {
