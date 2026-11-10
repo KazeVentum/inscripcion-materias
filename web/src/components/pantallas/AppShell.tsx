@@ -10,6 +10,7 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { usePerfil } from "@/lib/api/hooks";
 import { cerrarSesion } from "@/lib/api/sesion";
 import { cn } from "@/lib/cn";
+import { textoJornada } from "@/lib/horario";
 import { RutaProtegida } from "./RutaProtegida";
 
 const ENLACES = [
@@ -59,8 +60,11 @@ function Encabezado({ estado }: { estado: ReactNode }) {
         <p className="m-0 font-head text-compact font-bold tracking-[0.01em] text-primary-ink">
           UNIMINUTO
         </p>
-        <p className="m-0 truncate text-meta text-text-3 tabular">
-          {perfil.data ? `${perfil.data.nombre}, 2027-1` : "Inscripción 2027-1"}
+        <p
+          className="m-0 text-meta text-text-3 tabular"
+          {...(perfil.data ? { title: perfil.data.nombre } : {})}
+        >
+          {perfil.data ? textoJornada(perfil.data.jornada) : "Inscripción 2027-1"}
         </p>
       </div>
 

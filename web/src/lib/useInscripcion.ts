@@ -11,7 +11,7 @@ import {
   TEXTO_RECHAZADA,
   TEXTO_SIN_CONFIRMAR,
 } from "@/lib/inscribir";
-import type { NrcOut } from "@/lib/tipos";
+import type { NrcOut, PerfilOut } from "@/lib/tipos";
 
 function sinClave<V>(mapa: Record<string, V>, clave: string): Record<string, V> {
   return Object.fromEntries(Object.entries(mapa).filter(([k]) => k !== clave));
@@ -25,6 +25,7 @@ export function useRefrescar() {
   return useCallback(() => {
     void qc.invalidateQueries({ queryKey: claves.horarioTodos });
     void qc.invalidateQueries({ queryKey: claves.materiasTodas });
+    void qc.invalidateQueries({ queryKey: claves.avanceTodos });
     void qc.invalidateQueries({ queryKey: claves.nrcTodos });
   }, [qc]);
 }
@@ -118,7 +119,8 @@ export function useInscripcion() {
           return;
         }
         const horario = leerHorario(qc);
-        avisos.error(mensajeIntentoFallido(err, nrc, horario));
+        const jornada = qc.getQueriesData<PerfilOut>({ queryKey: ["perfil"] })[0]?.[1]?.jornada;
+        avisos.error(mensajeIntentoFallido(err, nrc, horario, jornada));
         // Si falló tras reservar (p. ej. el seguimiento), el estado real está en el servidor.
         refrescar();
       } finally {

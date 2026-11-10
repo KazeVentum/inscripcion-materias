@@ -4,6 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { CalendarCheck } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { AvanceSemestre } from "@/components/dominio/AvanceSemestre";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { BotonInscribir } from "@/components/dominio/BotonInscribir";
 import { CalendarioSemanal } from "@/components/dominio/CalendarioSemanal";
 import { FilaMateria, ListaMaterias } from "@/components/dominio/FilaMateria";
@@ -17,7 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { ErrorRed } from "@/lib/api/cliente";
 import { useSesion } from "@/lib/api/sesion";
 import { claves } from "@/lib/api/consultas";
-import { useHorario, useMaterias } from "@/lib/api/hooks";
+import { useAvance, useHorario, useMaterias } from "@/lib/api/hooks";
 import { alternativaLocal } from "@/lib/alternativa";
 import { bloquesDe, horarioLegible } from "@/lib/horario";
 import type {
@@ -57,6 +59,8 @@ export function PantallaInscripcion() {
   const sesion = useSesion();
   const materiasQ = useMaterias();
   const horarioQ = useHorario();
+  const avanceQ = useAvance();
+  const [avanceAbierto, setAvanceAbierto] = useState(false);
   const conexion = useCuposEnVivo();
   const { fases, alternativas, inscribir } = useInscripcion();
   const cancelar = useCancelar();
@@ -128,8 +132,19 @@ export function PantallaInscripcion() {
   const materias = materiasQ.data;
   const pendientes = materias?.filter((m) => m.estado === "pendiente").length ?? 0;
 
+  const avanceUI = avanceQ.data ? (
+    <AvanceSemestre
+      avance={avanceQ.data}
+      abierto={avanceAbierto}
+      onAbiertoChange={setAvanceAbierto}
+    />
+  ) : avanceQ.isPending ? (
+    <Skeleton className="h-14 w-full" />
+  ) : null;
+
   const lista = materias ? (
     <div className="grid gap-6">
+      {avanceUI}
       {pendientes === 0 ? (
         <EstadoVacio
           icono={<CalendarCheck />}

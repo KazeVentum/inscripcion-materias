@@ -1,4 +1,12 @@
-import type { BloqueCalendarioDatos, BloqueOut, Dia, Franja, HoraHM, NrcOut } from "./tipos";
+import type {
+  Jornada,
+  BloqueCalendarioDatos,
+  BloqueOut,
+  Dia,
+  Franja,
+  HoraHM,
+  NrcOut,
+} from "./tipos";
 
 export const HORA_INICIO = 7;
 export const HORA_FIN = 22;
@@ -120,4 +128,14 @@ export function mmss(segundos: number): string {
   const m = Math.floor(segundos / 60);
   const s = segundos % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+/** "18:00–22:00" (noche) o "12:00–18:00" (tarde). */
+export function ventanaJornada(j: Jornada): string {
+  return j === "noche" ? "18:00–22:00" : "12:00–18:00";
+}
+
+/** "Jornada noche · 18:00–22:00". */
+export function textoJornada(j: Jornada): string {
+  return `Jornada ${j} · ${ventanaJornada(j)}`;
 }

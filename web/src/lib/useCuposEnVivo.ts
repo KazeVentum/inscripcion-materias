@@ -44,6 +44,7 @@ export function useCuposEnVivo(
         void qc.invalidateQueries({ queryKey: claves.nrcTodos });
         void qc.invalidateQueries({ queryKey: claves.horarioTodos });
         void qc.invalidateQueries({ queryKey: claves.materiasTodas });
+        void qc.invalidateQueries({ queryKey: claves.avanceTodos });
       },
       onSesionExpirada: cerrarSesion,
       ...inyectar,

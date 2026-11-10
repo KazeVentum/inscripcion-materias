@@ -42,10 +42,7 @@ export interface PerfilOut {
 export type Jornada = "noche" | "tarde";
 
 export type EstadoMateriaAvance =
-  | "inscrita"
-  | "habilitada"
-  | "bloqueada_prerrequisito"
-  | "sin_oferta";
+  "inscrita" | "habilitada" | "bloqueada_prerrequisito" | "sin_oferta";
 
 export interface MateriaAvanceOut {
   materiaId: string;

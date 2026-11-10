@@ -51,6 +51,22 @@ export class ApiUsuario {
     const r = await this.req.get(`/api/v1/materias/${materiaId}/nrc`, { headers: this.h() });
     return (await r.json()) as NrcApi[];
   }
+  async avance() {
+    const r = await this.req.get("/api/v1/avance", { headers: this.h() });
+    return (await r.json()) as {
+      semestreActual: number;
+      totalPendientes: number;
+      inscritas: number;
+      faltan: number;
+      mensaje: string;
+      materias: { materiaId: string; nombre: string; estado: string }[];
+      atrasadas: { materiaId: string; nombre: string; estado: string }[];
+    };
+  }
+  async perfil() {
+    const r = await this.req.get("/api/v1/me", { headers: this.h() });
+    return (await r.json()) as { jornada: "noche" | "tarde" };
+  }
   async horario() {
     const r = await this.req.get("/api/v1/horario", { headers: this.h() });
     return (await r.json()) as {

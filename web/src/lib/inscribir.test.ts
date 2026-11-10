@@ -140,6 +140,14 @@ describe("mensajes de error (brief §7)", () => {
       "No se descontó ningún cupo",
     );
   });
+  it("fuera_de_jornada: explica la jornada y qué hacer", () => {
+    const e = new ApiError(409, { codigo: "fuera_de_jornada", mensaje: "x" });
+    expect(mensajeIntentoFallido(e, nrc(), horario, "noche")).toBe(
+      "El NRC 80852 queda fuera de tu jornada noche (18:00–22:00). Elige un grupo dentro de ese horario o uno virtual.",
+    );
+    expect(mensajeIntentoFallido(e, nrc(), horario, "tarde")).toContain("12:00–18:00");
+    expect(mensajeIntentoFallido(e, nrc(), horario)).toContain("fuera de tu jornada");
+  });
   it("503 y desconocidos prometen que no se descontó cupo", () => {
     expect(
       mensajeIntentoFallido(

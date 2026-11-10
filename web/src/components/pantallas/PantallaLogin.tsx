@@ -18,6 +18,7 @@ const DEMOS = [
   { id: "est-000003", nota: "6.º semestre" },
   { id: "est-000004", nota: "9.º, habilitada para práctica" },
   { id: "est-000005", nota: "con rezago" },
+  { id: "est-000006", nota: "3.er semestre, jornada tarde" },
 ] as const;
 
 /** Solo rutas internas: evita redirigir a otro sitio con ?siguiente=. */

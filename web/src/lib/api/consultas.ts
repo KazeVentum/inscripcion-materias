@@ -9,9 +9,11 @@ import type { HorarioOut, MateriaHabilitadaOut, NrcOut } from "@/lib/tipos";
 export const claves = {
   perfil: (est: string | null) => ["perfil", est] as const,
   materias: (est: string | null) => ["materias", est] as const,
+  avance: (est: string | null) => ["avance", est] as const,
   horario: (est: string | null) => ["horario", est] as const,
   nrcDe: (est: string | null, materiaId: string) => ["nrc", est, materiaId] as const,
   materiasTodas: ["materias"] as const,
+  avanceTodos: ["avance"] as const,
   horarioTodos: ["horario"] as const,
   nrcTodos: ["nrc"] as const,
 };

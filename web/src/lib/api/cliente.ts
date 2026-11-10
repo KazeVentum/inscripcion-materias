@@ -1,6 +1,7 @@
 import type {
   CodigoError,
   EstadoInscripcionOut,
+  AvanceOut,
   HorarioOut,
   InscripcionIn,
   LoginIn,
@@ -121,6 +122,7 @@ export function crearCliente({
       pedir<MateriaHabilitadaOut[]>("/materias/habilitadas", opc(signal)),
     nrcDe: (materiaId: string, signal?: AbortSignal) =>
       pedir<NrcOut[]>(`/materias/${enc(materiaId)}/nrc`, opc(signal)),
+    avance: (signal?: AbortSignal) => pedir<AvanceOut>("/avance", opc(signal)),
     horario: (signal?: AbortSignal) => pedir<HorarioOut>("/horario", opc(signal)),
     inscribir: (datos: InscripcionIn) =>
       pedir<ReservaOut>("/inscripciones", { metodo: "POST", cuerpo: datos }),

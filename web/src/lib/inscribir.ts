@@ -1,6 +1,6 @@
 import { ApiError, ErrorRed } from "@/lib/api/cliente";
-import { cruzan, diaLargo } from "./horario";
-import type { EstadoInscripcionOut, HorarioOut, NrcOut } from "./tipos";
+import { cruzan, diaLargo, ventanaJornada } from "./horario";
+import type { EstadoInscripcionOut, HorarioOut, Jornada, NrcOut } from "./tipos";
 
 export const sleep = (ms: number, signal?: AbortSignal) =>
   new Promise<void>((resolve, reject) => {
@@ -69,6 +69,7 @@ export function mensajeIntentoFallido(
   err: unknown,
   nrc: NrcOut,
   horario: HorarioOut | undefined,
+  jornada?: Jornada,
 ): string {
   if (err instanceof ErrorRed) {
     return `No pudimos inscribirte. ${SIN_DESCUENTO} Revisa tu conexión y vuelve a intentarlo.`;
@@ -83,6 +84,10 @@ export function mensajeIntentoFallido(
         return err.message;
       case "cruce":
         return mensajeCruce(nrc, err.conflicto, horario) ?? err.message;
+      case "fuera_de_jornada":
+        return jornada
+          ? `El NRC ${nrc.nrc} queda fuera de tu jornada ${jornada} (${ventanaJornada(jornada)}). Elige un grupo dentro de ese horario o uno virtual.`
+          : `El NRC ${nrc.nrc} queda fuera de tu jornada. Elige un grupo dentro de tu horario o uno virtual.`;
       case "nrc_inexistente":
         return `El NRC ${nrc.nrc} ya no existe en la oferta. ${SIN_DESCUENTO}`;
       case "servicio_no_disponible":

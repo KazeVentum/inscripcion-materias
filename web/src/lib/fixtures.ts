@@ -5,6 +5,7 @@
  * reservado y Sistemas Operativos 80852 en vista previa (maqueta aprobada del brief).
  */
 import type {
+  AvanceOut,
   BloqueCalendarioDatos,
   ErrorOut,
   HorarioOut,
@@ -262,3 +263,33 @@ export const bloquesConConflicto: BloqueCalendarioDatos[] = [
     cruzaCon: "81204",
   },
 ];
+
+/** Avance de un estudiante de 4.º semestre: 5 obligatorias, 2 inscritas, 1 atrasada. */
+export const avance: AvanceOut = {
+  semestreActual: 4,
+  totalPendientes: 5,
+  inscritas: 2,
+  faltan: 3,
+  habilitadasSinInscribir: 2,
+  materias: [
+    { materiaId: "FISI1040", nombre: "Física Eléctrica", semestre: 4, estado: "habilitada" },
+    { materiaId: "INGL1030", nombre: "Inglés III", semestre: 4, estado: "inscrita" },
+    {
+      materiaId: "ISUMBG113",
+      nombre: "Redes de Computadores",
+      semestre: 4,
+      estado: "bloqueada_prerrequisito",
+    },
+    { materiaId: "ISUMBG193", nombre: "Bases de Datos", semestre: 4, estado: "inscrita" },
+    {
+      materiaId: "PRAC1020",
+      nombre: "Desarrollo Social Contemporáneo",
+      semestre: 4,
+      estado: "sin_oferta",
+    },
+  ],
+  atrasadas: [
+    { materiaId: "ISUMBG103", nombre: "Sistemas Operativos", semestre: 3, estado: "habilitada" },
+  ],
+  mensaje: "Te faltan 3 materias de tu semestre; puedes inscribir 2 ahora.",
+};

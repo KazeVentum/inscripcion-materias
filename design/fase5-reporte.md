@@ -44,3 +44,10 @@
 
 Resultados: `make test` (seed 33, api 81, worker 19, web 170 + 113 stories), typecheck, lint, `make e2e` 19/19 (dos corridas seguidas).
 Nota: durante la corrida hubo cambios sin commitear en `data/seed` y `services/api` que no son de esta tarea; una corrida de `make test` coincidió con ellos y falló el seed (NRC duplicado) y pasó al repetirla.
+
+## Avance del semestre y jornada
+- `AvanceSemestre` (dominio, con stories y pruebas): una línea con el `mensaje` de `GET /avance`, "Faltan x de y" y una barra de segmentos finos (uno por materia, tokens `seat-*`); al tocarla se abre la lista del semestre con el estado de cada materia en texto + icono, y las atrasadas van en un segundo colapsable ("De semestres anteriores (n)"). Va al inicio de la lista de materias (móvil y escritorio). Query `["avance", estudianteId]`; se invalida al inscribir, cancelar y al resincronizar el stream.
+- Jornada: la cabecera muestra "Jornada noche · 18:00–22:00" (el nombre queda en `title`); el login sugiere `est-000006` (3.er semestre, jornada tarde).
+- `409 fuera_de_jornada`: aviso "El NRC X queda fuera de tu jornada noche (18:00–22:00). Elige un grupo dentro de ese horario o uno virtual." (usa la jornada del perfil en caché).
+- E2E nuevos (`avance-jornada.spec.ts`): `/avance` de est-000002 coherente con la pantalla (mensaje, cifras, estados, atrasadas colapsadas, inscritas en la lista); inscribir una habilitada baja "faltan" en 1; est-000006 solo ve horarios 12:00–18:00 o virtuales; cabeceras de jornada.
+- Resultados: 24/24 E2E, Vitest 176, stories 118, typecheck y lint limpios. Capturas rehechas.

@@ -29,6 +29,15 @@ export function useMaterias() {
   });
 }
 
+export function useAvance() {
+  const est = useEstudiante();
+  return useQuery({
+    queryKey: claves.avance(est),
+    queryFn: ({ signal }) => api.avance(signal),
+    enabled: est !== null,
+  });
+}
+
 export function useHorario() {
   const est = useEstudiante();
   return useQuery({
