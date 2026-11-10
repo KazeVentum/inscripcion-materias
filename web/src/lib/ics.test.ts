@@ -77,8 +77,17 @@ describe("generarIcs", () => {
 });
 
 describe("utilidades", () => {
+  it("escapa el punto y coma con barra invertida literal (RFC 5545)", () => {
+    expect(escaparTexto("a;b")).toBe("a\\;b");
+    expect(escaparTexto("a;b")).toHaveLength(4);
+    const ics = generarIcs([{ ...item, titulo: "Cálculo; I" }], {
+      periodo: "2027-1",
+      ahora: AHORA,
+    });
+    expect(ics).toContain("SUMMARY:Cálculo\\; I (NRC 64269)");
+  });
   it("escaparTexto", () => {
-    expect(escaparTexto("a;b,c\\d\ne")).toBe("a\;b\\,c\\\\d\\ne");
+    expect(escaparTexto("a;b,c\\d\ne")).toBe("a\\;b\\,c\\\\d\\ne");
   });
   it("plegar no parte caracteres multibyte", () => {
     const p = plegar("X".repeat(74) + "ñ" + "Y".repeat(10));
