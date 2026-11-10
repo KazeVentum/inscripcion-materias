@@ -86,15 +86,31 @@ def test_todos_los_demas_son_nocturnos(datos: Datos) -> None:
     assert {e["jornada"] for e in datos["estudiantes"] if e["estudianteId"] != "est-000006"} == {"noche"}
 
 
-def test_cada_materia_tiene_3_nrc_noche_distintos_y_2_tarde(datos: Datos) -> None:
+def test_cada_materia_tiene_3_nrc_noche_distintos_y_3_tarde(datos: Datos) -> None:
     from seed import rules
 
     for m in datos["materias"]:
         nrcs = [n for n in datos["nrc"] if n["materiaId"] == m["materiaId"] and n["bloques"]]
-        for jornada, minimo in (("noche", 3), ("tarde", 2)):
+        for jornada, minimo in (("noche", 3), ("tarde", 3)):
             firmas = {
                 tuple((b["dia"], b["inicio"]) for b in n["bloques"])
                 for n in nrcs
                 if rules.en_jornada(n["bloques"], jornada)
             }
             assert len(firmas) >= minimo, (m["materiaId"], jornada)
+
+
+def test_cada_materia_conserva_oferta_nocturna_con_cupo(datos: Datos) -> None:
+    from seed import rules
+
+    confirmadas = Counter(i["nrc"] for i in datos["inscripciones"] if i["estado"] == "confirmada")
+    for m in datos["materias"]:
+        libres = [
+            n
+            for n in datos["nrc"]
+            if n["materiaId"] == m["materiaId"]
+            and n["bloques"]
+            and rules.en_jornada(n["bloques"], "noche")
+            and confirmadas[n["nrc"]] < n["cupoTotal"]
+        ]
+        assert len(libres) >= 3, m["materiaId"]

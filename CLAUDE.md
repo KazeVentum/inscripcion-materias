@@ -183,7 +183,7 @@ NRC de ejemplo (el horario va embebido):
   recomendaciones solo muestran NRC de la jornada (más la regla de cupo y cruce); `POST
   /inscripciones` rechaza los demás con `fuera_de_jornada` (409). Todos los estudiantes
   sintéticos son `noche`, salvo `est-000006`. El generador garantiza por materia ≥ 3 NRC de
-  noche y ≥ 2 de tarde con horarios distintos.
+  noche y ≥ 3 de tarde con horarios distintos.
 - `GET /api/v1/avance`: obligatorias (no electivas) con `semestre == semestre actual` sin aprobar:
   `semestreActual`, `totalPendientes`, `inscritas`, `faltan`, `habilitadasSinInscribir`,
   `materias[{materiaId, nombre, semestre, estado}]` (`inscrita | habilitada |

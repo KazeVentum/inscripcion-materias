@@ -459,3 +459,68 @@ def test_si_kafka_no_entrega_la_reserva_se_deshace_y_responde_503(
         assert rr.zscore("reservas:pendientes", f"est-000004|{nrc}") is None
     finally:
         rr.close()
+
+
+# ------------------------------------------------------------------------ jornada
+
+
+def test_perfil_incluye_jornada(client: TestClient) -> None:
+    assert (
+        client.get("/api/v1/me", headers=login(client, "est-000001")).json()["jornada"] == "noche"
+    )
+    assert (
+        client.get("/api/v1/me", headers=login(client, "est-000006")).json()["jornada"] == "tarde"
+    )
+
+
+def test_nrc_visibles_respetan_la_jornada(client: TestClient) -> None:
+    from app.dominio import en_jornada
+
+    for est, jornada in (("est-000001", "noche"), ("est-000006", "tarde")):
+        h = login(client, est)
+        visibles = 0
+        for m in client.get("/api/v1/materias/habilitadas", headers=h).json():
+            for n in client.get(f"/api/v1/materias/{m['materiaId']}/nrc", headers=h).json():
+                assert en_jornada(n["bloques"], jornada), (est, n["nrc"])
+                visibles += 1
+        assert visibles > 0
+
+
+def test_est6_tiene_varias_opciones_de_tarde_por_materia_habilitada(client: TestClient) -> None:
+    h = login(client, "est-000006")
+    pendientes = [
+        m
+        for m in client.get("/api/v1/materias/habilitadas", headers=h).json()
+        if m["estado"] == "pendiente" and m["semestre"] <= 3
+    ]
+    assert pendientes and all(m["nrcDisponibles"] >= 1 for m in pendientes)
+
+
+def test_inscribir_fuera_de_jornada_es_409_y_no_toca_cupos(client: TestClient) -> None:
+    cat = client.app.state.ctx.catalogo  # type: ignore[attr-defined]
+    h = login(client, "est-000006")
+    habilitadas = client.get("/api/v1/materias/habilitadas", headers=h).json()
+    from app.dominio import en_jornada
+
+    nrc = next(
+        n
+        for m in habilitadas
+        for n in cat.nrc_por_materia[m["materiaId"]]
+        if not en_jornada(cat.nrc_info[n].bloques, "tarde")
+    )
+    r = client.post("/api/v1/inscripciones", json={"nrc": nrc}, headers=h)
+    assert r.status_code == 409 and r.json()["codigo"] == "fuera_de_jornada"
+    red = redis_sync.Redis.from_url(REDIS_URL, decode_responses=True)
+    assert red.hexists("ocupado:est-000006", nrc) is False
+
+
+def test_avance_solo_del_semestre_actual(client: TestClient) -> None:
+    h = login(client, "est-000005")  # semestre 7 con rezago
+    a = client.get("/api/v1/avance", headers=h).json()
+    assert a["semestreActual"] == 7
+    assert all(m["semestre"] == 7 for m in a["materias"])
+    assert a["totalPendientes"] == len(a["materias"])
+    assert a["faltan"] == a["totalPendientes"] - a["inscritas"]
+    assert all(m["semestre"] < 7 for m in a["atrasadas"]) and a["atrasadas"]
+    assert a["mensaje"]
+    assert a["habilitadasSinInscribir"] == sum(m["estado"] == "habilitada" for m in a["materias"])

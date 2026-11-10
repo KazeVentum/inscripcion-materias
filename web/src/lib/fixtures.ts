@@ -25,6 +25,7 @@ export const perfil: PerfilOut = {
   programa: "Ingeniería de Sistemas",
   sede: "Calle 80",
   semestre: 3,
+  jornada: "noche",
   creditosAprobados: 32,
 };
 

@@ -38,7 +38,7 @@ PESOS_FRANJA = {"mañana": 0.06, "tarde": 0.22, "noche": 0.72}
 # NRC por materia según semestre (los semestres bajos tienen más demanda).
 RANGO_NRC_SEMESTRE = ((3, (12, 15)), (6, (10, 12)), (10, (7, 9)))
 MIN_NRC_NOCHE = 3
-MIN_NRC_TARDE = 2
+MIN_NRC_TARDE = 3
 PESOS_MODALIDAD = {"presencial": 0.887, "virtual": 0.077, "sincronica": 0.035}
 PESOS_SEDE = {"Calle 80": 0.70, "Perdomo": 0.20, "San Camilo": 0.10}
 PESOS_SEMESTRE = (0.12, 0.11, 0.11, 0.11, 0.10, 0.10, 0.09, 0.09, 0.09, 0.08)
@@ -79,7 +79,7 @@ PERFILES_DEMO: dict[str, dict[str, Any]] = {
         "perfil": "Semestre 7 con rezago: materias pendientes de semestres anteriores",
     },
     "est-000006": {
-        "semestre": 3, "rezago": False, "inscripciones": 3, "jornada": "tarde",
+        "semestre": 3, "rezago": False, "inscripciones": 2, "jornada": "tarde",
         "perfil": "Semestre 3 de jornada tarde: solo ve NRC entre 12:00 y 18:00",
     },
 }
@@ -306,7 +306,7 @@ def _garantizar_jornadas(
     patrones: list[str],
     opciones_franja: dict[str, tuple[list[tuple[str, str]], list[int]]],
     protegido: str | None,
-) -> None:
+) -> set[str]:
     """Cada materia tiene al menos MIN_NRC_NOCHE NRC en la ventana noche y MIN_NRC_TARDE en la
     ventana tarde, con horarios distintos (día y hora de inicio) para que haya opciones reales.
 
@@ -352,6 +352,7 @@ def _garantizar_jornadas(
         # solo se protegen MIN NRC de la ventana; el resto queda libre para reescribirse
         orden = sorted(propios, key=lambda n: (n != protegido, nrcs.index(n)))
         contados[jornada] = set(orden[:minimo])
+    return contados["noche"]
 
 
 def _aprobar(
@@ -577,10 +578,14 @@ def build(
             }
             nrc_por_materia[mid].append(nrc)
 
-        _garantizar_jornadas(
+        noche = _garantizar_jornadas(
             rng, mid, nrc_por_materia[mid], nrc_docs, meta, edificios, patrones, opciones_franja,
             protegido=nrc_por_materia[mid][0] if mid == DEMO_MATERIA else None,
         )
+        # Los 3 NRC nocturnos "de oferta" conservan cupo libre: el estudiante nocturno siempre
+        # tiene dónde inscribir cada materia (el resto de NRC sí puede llenarse).
+        for n in noche:
+            meta[n]["objetivo"] = min(meta[n]["objetivo"], max(0, meta[n]["cupo"] - 4))
 
     # Estudiantes ---------------------------------------------------------------------
     estudiantes: list[_Estudiante] = []
@@ -674,6 +679,15 @@ def build(
                 raise RuntimeError(f"{est_id} no está habilitado para {mid}")
             if not any(_cabe(e, nrc, ctx) for nrc in nrc_por_materia[mid]):
                 raise RuntimeError(f"{est_id}: ningún NRC de {mid} tiene cupo libre sin cruce")
+
+    # est-000006 (tarde): toda materia que puede inscribir de su semestre o el siguiente conserva
+    # al menos una opción de tarde sin cruce con lo que ya cursa.
+    tarde = por_id["est-000006"]
+    for mid in materias_orden:
+        cerca = ctx.materias[mid]["semestre"] <= tarde.semestre + 1
+        sin_opcion = not any(_cabe(tarde, nrc, ctx) for nrc in nrc_por_materia[mid])
+        if cerca and sin_opcion and _habilitada(tarde, mid, ctx):
+            raise RuntimeError(f"est-000006: sin NRC de tarde sin cruce para {mid}")
 
     # Inscripciones confirmadas --------------------------------------------------------
     pares = sorted((eid, nrc) for nrc, m in meta.items() for eid in m["inscritos"])
