@@ -72,7 +72,8 @@ Redpanda en modo dev (`--smp 1 --memory 512M --overprovisioned`).
 
 ### Flujo de inscripción (HU4)
 
-1. `POST /inscripciones` → valida prerrequisitos en la API (dato estable, Mongo).
+1. `POST /inscripciones` → valida prerrequisitos y jornada en la API (dato estable, Mongo); un
+   NRC fuera de la jornada del estudiante responde `409 fuera_de_jornada` sin tocar Redis.
 2. Script **Lua atómico** en Redis (un solo `EVALSHA`; nada de leer-y-escribir desde Python).
    En orden, y abortando sin escribir nada al primer fallo:
    - `cupos:{periodo}:{nrc}` debe existir (si no → `error`).
@@ -130,7 +131,7 @@ Envelope de evento (JSON):
   "eventId": "uuid", "tipo": "intento|confirmacion|cancelacion|busqueda",
   "ocurridoEn": "2026-11-09T21:00:00.123Z", "periodo": "2027-1",
   "estudianteId": "est-000123", "nrc": "80852", "materiaId": "ISUMBG103",
-  "resultado": "exito|sin_cupo|cruce|prerrequisito|ya_inscrita|materia_aprobada|rechazada|error",
+  "resultado": "exito|sin_cupo|cruce|prerrequisito|ya_inscrita|materia_aprobada|fuera_de_jornada|rechazada|error",
   "latenciaMs": 12, "alternativaNrc": "86366"
 }
 ```
@@ -150,7 +151,7 @@ producción tampoco iría en claro en logs (Ley 1581 de 2012).
 
 | Colección | Qué guarda | Clave de partición (Cosmos) |
 | --- | --- | --- |
-| `estudiantes` | id, nombre sintético, correo sintético, programa, sede, semestre, materias aprobadas | `estudianteId` |
+| `estudiantes` | id, nombre sintético, correo sintético, programa, sede, semestre, `jornada`, materias aprobadas | `estudianteId` |
 | `pensums` | programa, materias por semestre, prerrequisitos | `programaId` |
 | `materias` | código, nombre, créditos, semestre, área | `materiaId` |
 | `nrc` | NRC, materia, docente, sede, modalidad, periodo, cupo total, bloques embebidos | `materiaId` |
@@ -175,6 +176,18 @@ NRC de ejemplo (el horario va embebido):
   Los NRC virtuales no tienen bloques y nunca generan cruce.
 - Franja por hora de inicio: mañana < 12:00, tarde < 18:00, noche ≥ 18:00.
 - Cruce: mismo día y `inicio_a < fin_b && inicio_b < fin_a`.
+- Jornada del estudiante (`jornada`: `noche | tarde`). Ventana: `noche` = todos los bloques con
+  inicio ≥ 18:00 y fin ≤ 22:00; `tarde` = inicio ≥ 12:00 y fin ≤ 18:00. Los NRC virtuales (sin
+  bloques) se ven en cualquier jornada; los sincrónicos tienen bloques y aplican la ventana.
+  `materias/habilitadas`, `materias/{id}/nrc`, las alternativas de `sin_cupo` y las
+  recomendaciones solo muestran NRC de la jornada (más la regla de cupo y cruce); `POST
+  /inscripciones` rechaza los demás con `fuera_de_jornada` (409). Todos los estudiantes
+  sintéticos son `noche`, salvo `est-000006`. El generador garantiza por materia ≥ 3 NRC de
+  noche y ≥ 2 de tarde con horarios distintos.
+- `GET /api/v1/avance`: obligatorias (no electivas) con `semestre == semestre actual` sin aprobar:
+  `semestreActual`, `totalPendientes`, `inscritas`, `faltan`, `habilitadasSinInscribir`,
+  `materias[{materiaId, nombre, semestre, estado}]` (`inscrita | habilitada |
+  bloqueada_prerrequisito | sin_oferta`), `atrasadas` (semestres anteriores, aparte) y `mensaje`.
 - Periodo simulado: `2027-1`.
 
 ### Redis — según informe, paso 6
@@ -206,7 +219,7 @@ una optimización, la garantía de idempotencia es la regla por estado.
 igual para todos los estudiantes sintéticos. Devuelve JWT HS256 (`JWT_SECRET` ≥ 32 bytes,
 expira en `JWT_TTL_MIN`, exige `exp`/`sub`/`iat`, `aud=inscripcion-api`), con límite de 10
 intentos fallidos por minuto por usuario. Demos: `est-000001` (1.er semestre), `est-000002` (clase MAR/JUE 20:30,
-HU3), `est-000003` (6.º), `est-000004` (9.º, habilitada para Práctica), `est-000005` (rezago).
+HU3), `est-000003` (6.º), `est-000004` (9.º, habilitada para Práctica), `est-000005` (rezago), `est-000006` (3.er semestre, jornada tarde).
 `franja` usa los valores `mañana | tarde | noche`.
 
 ### Data lake (MinIO)

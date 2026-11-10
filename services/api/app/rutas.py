@@ -15,16 +15,18 @@ from starlette.background import BackgroundTask
 
 from . import claves
 from .contexto import Contexto
-from .dominio import evaluar_habilitacion
+from .dominio import MateriaPensum, calcular_avance, en_jornada, evaluar_habilitacion
 from .errores import ApiError
 from .eventos import ahora_iso, construir_evento
 from .schemas import (
+    AvanceOut,
     ErrorOut,
     EstadoInscripcionOut,
     HorarioOut,
     InscripcionIn,
     LoginIn,
     LoginOut,
+    MateriaAvanceOut,
     MateriaHabilitadaOut,
     NrcOut,
     PerfilOut,
@@ -142,7 +144,64 @@ async def me(ctx: Ctx, est_id: Est) -> PerfilOut:
         programa=est.programa,
         sede=est.sede,
         semestre=est.semestre,
+        jornada=est.jornada,
         creditosAprobados=est.creditos_aprobados,
+    )
+
+
+@router.get(
+    "/avance",
+    response_model=AvanceOut,
+    tags=["oferta"],
+    summary="Materias que te faltan por inscribir según tu semestre actual",
+    responses=_AUTH,
+)
+async def avance(ctx: Ctx, est_id: Est) -> AvanceOut:
+    """Endpoint propio y no parte de ``/me``: ``/me`` es barato y se pide en cada pantalla,
+    mientras que el avance lee Redis (cupos y ocupado) y cambia con cada inscripción."""
+    cat = ctx.catalogo
+    est = await _estudiante(ctx, est_id)
+    todos = [n for nrcs in cat.nrc_por_materia.values() for n in nrcs]
+    ocupado, libres = await leer_ocupado_y_libres(ctx, est_id, todos)
+    inscritas = {e["materiaId"] for e in ocupado.values()}
+    pensum = [
+        MateriaPensum(m.materia_id, m.nombre, m.semestre, m.electiva)
+        for m in (cat.materias[mid] for mid in cat.materias_pensum)
+    ]
+    res = calcular_avance(
+        est.semestre,
+        pensum,
+        est.aprobadas,
+        inscritas,
+        lambda mid: (
+            evaluar_habilitacion(
+                mid, cat.prerrequisitos, cat.creditos_minimos, est.aprobadas, est.creditos_aprobados
+            ).habilitada
+        ),
+        lambda mid: bool(
+            disponibles(
+                (cat.nrc_info[n] for n in cat.nrc_por_materia.get(mid, [])),
+                libres,
+                ocupado,
+                est.jornada,
+            )
+        ),
+    )
+
+    def fila(i: Any) -> MateriaAvanceOut:
+        return MateriaAvanceOut(
+            materiaId=i.materia_id, nombre=i.nombre, semestre=i.semestre, estado=i.estado
+        )
+
+    return AvanceOut(
+        semestreActual=res.semestre_actual,
+        totalPendientes=res.total_pendientes,
+        inscritas=res.inscritas,
+        faltan=res.faltan,
+        habilitadasSinInscribir=res.habilitadas_sin_inscribir,
+        materias=[fila(i) for i in res.materias],
+        atrasadas=[fila(i) for i in res.atrasadas],
+        mensaje=res.mensaje,
     )
 
 
@@ -176,7 +235,10 @@ async def materias_habilitadas(ctx: Ctx, est_id: Est) -> list[MateriaHabilitadaO
             if inscrita
             else len(
                 disponibles(
-                    (cat.nrc_info[n] for n in cat.nrc_por_materia.get(mid, [])), libres, ocupado
+                    (cat.nrc_info[n] for n in cat.nrc_por_materia.get(mid, [])),
+                    libres,
+                    ocupado,
+                    est.jornada,
                 )
             )
         )
@@ -216,7 +278,7 @@ async def nrc_de_materia(materiaId: str, ctx: Ctx, est_id: Est) -> list[NrcOut]:
 
     ids = cat.nrc_por_materia.get(materiaId, [])
     ocupado, libres = await leer_ocupado_y_libres(ctx, est_id, ids)
-    ok = disponibles((cat.nrc_info[n] for n in ids), libres, ocupado)
+    ok = disponibles((cat.nrc_info[n] for n in ids), libres, ocupado, est.jornada)
     salida = [NrcOut(**nrc_a_dict(ctx, n.nrc, libres[n.nrc])) for n in ok]
     await ctx.productor.publicar(
         ctx.settings.topic_busquedas,
@@ -279,7 +341,7 @@ async def _publicar_intento(
         404: {"model": ErrorOut, "description": "NRC inexistente"},
         409: {
             "model": ErrorOut,
-            "description": "sin_cupo | cruce | ya_inscrita | materia_aprobada",
+            "description": "sin_cupo | cruce | ya_inscrita | materia_aprobada | fuera_de_jornada",
         },
     },
 )
@@ -307,6 +369,15 @@ async def inscribir(body: InscripcionIn, ctx: Ctx, est_id: Est) -> ReservaOut:
     if not hab.habilitada:
         await _publicar_intento(ctx, est_id, info.nrc, info.materia_id, "prerrequisito", t0)
         raise ApiError(403, "prerrequisito", hab.motivo)
+
+    if not en_jornada(info.bloques, est.jornada):
+        # dato estable: se valida en la API, antes de tocar Redis
+        await _publicar_intento(ctx, est_id, info.nrc, info.materia_id, "fuera_de_jornada", t0)
+        raise ApiError(
+            409,
+            "fuera_de_jornada",
+            f"El NRC {info.nrc} está fuera de tu jornada ({est.jornada})",
+        )
 
     vence_ms = int(time.time() * 1000) + ctx.settings.reserva_ttl_s * 1000
     reserva_id = str(uuid.uuid4())
@@ -357,7 +428,7 @@ async def inscribir(body: InscripcionIn, ctx: Ctx, est_id: Est) -> ReservaOut:
             vencimiento=iso_de_ms(vence_ms),
         )
     if estado == "sin_cupo":
-        alt = await alternativa_para(ctx, est_id, info)
+        alt = await alternativa_para(ctx, est_id, info, est.jornada)
         await _publicar_intento(
             ctx, est_id, info.nrc, info.materia_id, "sin_cupo", t0, alt["nrc"] if alt else None
         )

@@ -12,7 +12,7 @@ from typing import Any
 
 from pymongo.asynchronous.database import AsyncDatabase
 
-from .dominio import NrcInfo
+from .dominio import JORNADAS, NrcInfo
 
 TTL_ESTUDIANTE_S = 300.0
 
@@ -24,6 +24,7 @@ class Estudiante:
     programa: str
     sede: str
     semestre: int
+    jornada: str
     aprobadas: frozenset[str]
     creditos_aprobados: int
 
@@ -35,6 +36,7 @@ class MateriaInfo:
     creditos: int
     semestre: int
     area: str
+    electiva: bool = False
 
 
 def _estudiante(doc: dict[str, Any]) -> Estudiante:
@@ -44,6 +46,7 @@ def _estudiante(doc: dict[str, Any]) -> Estudiante:
         programa=doc["programa"],
         sede=doc["sede"],
         semestre=int(doc["semestre"]),
+        jornada=doc.get("jornada", "noche") if doc.get("jornada") in JORNADAS else "noche",
         aprobadas=frozenset(doc.get("materiasAprobadas", [])),
         creditos_aprobados=int(doc.get("creditosAprobados", 0)),
     )
@@ -91,6 +94,7 @@ class Catalogo:
                 creditos=int(doc["creditos"]),
                 semestre=int(doc["semestre"]),
                 area=doc.get("area", ""),
+                electiva=bool(doc.get("electiva", False)),
             )
         pensum = await db["pensums"].find_one()
         if pensum is not None:

@@ -34,7 +34,38 @@ export interface PerfilOut {
   programa: string;
   sede: string;
   semestre: number;
+  /** noche: bloques 18:00-22:00; tarde: 12:00-18:00; los virtuales se ven en cualquiera. */
+  jornada: Jornada;
   creditosAprobados: number;
+}
+
+export type Jornada = "noche" | "tarde";
+
+export type EstadoMateriaAvance =
+  | "inscrita"
+  | "habilitada"
+  | "bloqueada_prerrequisito"
+  | "sin_oferta";
+
+export interface MateriaAvanceOut {
+  materiaId: string;
+  nombre: string;
+  semestre: number;
+  estado: EstadoMateriaAvance;
+}
+
+/** GET /avance: obligatorias del semestre actual sin aprobar. */
+export interface AvanceOut {
+  semestreActual: number;
+  totalPendientes: number;
+  inscritas: number;
+  /** totalPendientes - inscritas */
+  faltan: number;
+  habilitadasSinInscribir: number;
+  materias: MateriaAvanceOut[];
+  /** Dato secundario: obligatorias de semestres anteriores sin aprobar (no cuentan arriba). */
+  atrasadas: MateriaAvanceOut[];
+  mensaje: string;
 }
 
 // ----------------------------------------------------------------- oferta
@@ -122,6 +153,7 @@ export type CodigoError =
   | "cruce"
   | "ya_inscrita"
   | "materia_aprobada"
+  | "fuera_de_jornada"
   | "prerrequisito"
   | "nrc_inexistente"
   | "materia_inexistente"

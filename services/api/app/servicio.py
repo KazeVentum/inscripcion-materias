@@ -9,7 +9,7 @@ from typing import Any
 
 from . import claves
 from .contexto import Contexto
-from .dominio import NrcInfo, elegir_alternativa, nrc_en_conflicto
+from .dominio import NrcInfo, elegir_alternativa, en_jornada, nrc_en_conflicto
 
 
 def iso_de_ms(ms: int) -> str:
@@ -57,19 +57,26 @@ def disponibles(
     nrcs: Iterable[NrcInfo],
     libres: Mapping[str, int],
     ocupado: Mapping[str, Mapping[str, Any]],
+    jornada: str,
 ) -> list[NrcInfo]:
-    """NRC con cupo > 0 y sin cruce con lo ocupado (regla central)."""
+    """NRC con cupo > 0, sin cruce con lo ocupado y dentro de la jornada (regla central)."""
     return [
-        n for n in nrcs if libres.get(n.nrc, 0) > 0 and nrc_en_conflicto(n.bloques, ocupado) is None
+        n
+        for n in nrcs
+        if libres.get(n.nrc, 0) > 0
+        and en_jornada(n.bloques, jornada)
+        and nrc_en_conflicto(n.bloques, ocupado) is None
     ]
 
 
 async def alternativa_para(
-    ctx: Contexto, estudiante_id: str, objetivo: NrcInfo
+    ctx: Contexto, estudiante_id: str, objetivo: NrcInfo, jornada: str
 ) -> dict[str, Any] | None:
     ids = ctx.catalogo.nrc_por_materia.get(objetivo.materia_id, [])
     ocupado, libres = await leer_ocupado_y_libres(ctx, estudiante_id, ids)
-    mejor = elegir_alternativa(objetivo, (ctx.catalogo.nrc_info[i] for i in ids), libres, ocupado)
+    mejor = elegir_alternativa(
+        objetivo, (ctx.catalogo.nrc_info[i] for i in ids), libres, ocupado, jornada
+    )
     if mejor is None:
         return None
     return nrc_a_dict(ctx, mejor.nrc, libres[mejor.nrc])

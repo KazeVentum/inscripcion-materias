@@ -6,13 +6,17 @@ from typing import Any
 
 from app.dominio import (
     CandidataMateria,
+    MateriaPensum,
     NrcInfo,
     armar_horario,
+    calcular_avance,
     elegir_alternativa,
+    en_jornada,
     evaluar_habilitacion,
     franja_de,
     hay_cruce,
     materias_habilitadas,
+    mensaje_avance,
     nrc_en_conflicto,
     se_cruzan,
 )
@@ -188,3 +192,107 @@ def test_armar_horario_evita_cruces_y_respeta_creditos() -> None:
     res = armar_horario(candidatas, {}, libres, max_creditos=18)
     assert [n.nrc for n in res] == ["a1", "c1"]  # B no cabe sin cruce
     assert [n.nrc for n in armar_horario(candidatas, {}, libres, max_creditos=3)] == ["a1"]
+
+
+# ----------------------------------------------------------------------- jornada
+
+
+def test_jornada_noche_exige_todos_los_bloques_entre_18_y_22() -> None:
+    assert en_jornada([b("MAR", "20:30", "21:59"), b("JUE", "18:15", "19:44")], "noche")
+    assert en_jornada([b("LUN", "18:00", "22:00")], "noche")
+    assert not en_jornada([b("MAR", "16:45", "18:14")], "noche")
+    assert not en_jornada([b("MAR", "20:30", "21:59"), b("JUE", "15:15", "16:44")], "noche")
+    assert not en_jornada([b("MAR", "21:00", "22:01")], "noche")
+
+
+def test_jornada_tarde_exige_todos_los_bloques_entre_12_y_18() -> None:
+    assert en_jornada([b("LUN", "12:15", "13:44"), b("MIE", "16:00", "17:29")], "tarde")
+    assert not en_jornada([b("LUN", "16:45", "18:14")], "tarde")  # termina después de las 18:00
+    assert not en_jornada([b("LUN", "11:30", "12:59")], "tarde")
+    assert not en_jornada([b("LUN", "18:15", "19:44")], "tarde")
+
+
+def test_nrc_virtual_sin_bloques_esta_en_cualquier_jornada() -> None:
+    assert en_jornada([], "noche")
+    assert en_jornada([], "tarde")
+
+
+def test_alternativa_solo_dentro_de_la_jornada() -> None:
+    objetivo = nrc("1", [b("MAR", "20:30", "21:59")])
+    de_tarde = nrc("2", [b("MAR", "14:00", "15:29")])
+    de_noche = nrc("3", [b("JUE", "18:15", "19:44")])
+    libres = {"2": 5, "3": 5}
+    cands = [objetivo, de_tarde, de_noche]
+    assert elegir_alternativa(objetivo, cands, libres, {}, "noche") == de_noche
+    assert elegir_alternativa(objetivo, [objetivo, de_tarde], libres, {}, "noche") is None
+    assert elegir_alternativa(objetivo, cands, libres, {}, "tarde") == de_tarde
+
+
+# ------------------------------------------------------------------------ avance
+
+PENSUM = [
+    MateriaPensum("A1", "Materia A1", 1, False),
+    MateriaPensum("B3", "Materia B3", 3, False),
+    MateriaPensum("C3", "Materia C3", 3, False),
+    MateriaPensum("D3", "Materia D3", 3, False),
+    MateriaPensum("E3", "Electiva E3", 3, True),
+    MateriaPensum("F3", "Materia F3", 3, False),
+    MateriaPensum("G4", "Materia G4", 4, False),
+]
+
+
+def _avance(aprobadas: set[str], inscritas: set[str], bloqueadas: set[str], sin_oferta: set[str]):  # type: ignore[no-untyped-def]
+    return calcular_avance(
+        3,
+        PENSUM,
+        aprobadas,
+        inscritas,
+        lambda m: m not in bloqueadas,
+        lambda m: m not in sin_oferta,
+    )
+
+
+def test_avance_cuenta_solo_obligatorias_del_semestre_actual() -> None:
+    a = _avance({"F3"}, {"B3"}, {"D3"}, set())
+    ids = [m.materia_id for m in a.materias]
+    assert ids == ["B3", "C3", "D3"]  # sin electiva E3, sin aprobada F3, sin G4 (semestre 4)
+    assert a.total_pendientes == 3
+    assert a.inscritas == 1
+    assert a.faltan == 2
+    assert a.habilitadas_sin_inscribir == 1  # C3
+    assert {m.materia_id: m.estado for m in a.materias} == {
+        "B3": "inscrita",
+        "C3": "habilitada",
+        "D3": "bloqueada_prerrequisito",
+    }
+
+
+def test_avance_las_atrasadas_van_aparte_y_no_cuentan() -> None:
+    a = _avance(set(), set(), set(), set())
+    assert [m.materia_id for m in a.atrasadas] == ["A1"]
+    assert a.total_pendientes == 4  # B3, C3, D3, F3
+    assert a.faltan == 4
+    assert "A1" not in a.mensaje
+    assert "4 materias" in a.mensaje
+
+
+def test_avance_estado_sin_oferta_y_prioridad() -> None:
+    a = _avance({"B3", "C3"}, {"D3"}, {"D3"}, {"F3"})
+    assert {m.materia_id: m.estado for m in a.materias} == {"D3": "inscrita", "F3": "sin_oferta"}
+    assert a.habilitadas_sin_inscribir == 0
+    assert a.faltan == 1
+
+
+def test_avance_semestre_al_dia() -> None:
+    a = _avance({"B3", "C3", "D3", "F3"}, set(), set(), set())
+    assert a.total_pendientes == 0
+    assert a.faltan == 0
+    assert "al día" in a.mensaje
+
+
+def test_mensajes_de_avance() -> None:
+    esperado = "Te faltan 2 materias de tu semestre; puedes inscribir 1 ahora."
+    assert mensaje_avance(3, 2, 1) == esperado
+    assert mensaje_avance(3, 1, 2) == "Te falta 1 materia de tu semestre; puedes inscribir 2 ahora."
+    assert mensaje_avance(3, 3, 0).startswith("Te faltan 3 materias de tu semestre; por ahora")
+    assert "todas las materias de tu semestre" in mensaje_avance(3, 0, 0)

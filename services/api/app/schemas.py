@@ -27,6 +27,9 @@ class PerfilOut(BaseModel):
     programa: str
     sede: str
     semestre: int
+    jornada: Literal["noche", "tarde"] = Field(
+        description="noche: bloques 18:00-22:00; tarde: 12:00-18:00; virtuales en cualquiera"
+    )
     creditosAprobados: int
 
 
@@ -99,6 +102,33 @@ class RecomendacionOut(BaseModel):
     creditosTotales: int
     nrc: list[NrcOut]
     materiasSinOferta: list[str]
+
+
+class MateriaAvanceOut(BaseModel):
+    materiaId: str
+    nombre: str
+    semestre: int
+    estado: Literal["inscrita", "habilitada", "bloqueada_prerrequisito", "sin_oferta"]
+
+
+class AvanceOut(BaseModel):
+    """Obligatorias del semestre actual del estudiante que aún no aprobó."""
+
+    semestreActual: int
+    totalPendientes: int = Field(
+        description="Obligatorias con semestre == semestreActual sin aprobar"
+    )
+    inscritas: int = Field(description="De esas, las confirmadas o reservadas este periodo")
+    faltan: int = Field(description="totalPendientes - inscritas")
+    habilitadasSinInscribir: int = Field(
+        description="Las que puede inscribir ya, con oferta en su jornada"
+    )
+    materias: list[MateriaAvanceOut]
+    atrasadas: list[MateriaAvanceOut] = Field(
+        description="Dato secundario: obligatorias de semestres anteriores sin aprobar; "
+        "no cuentan en totalPendientes, faltan ni mensaje"
+    )
+    mensaje: str
 
 
 class ErrorOut(BaseModel):

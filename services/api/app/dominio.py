@@ -6,7 +6,7 @@ Franja por hora de inicio: mañana < 12:00, tarde < 18:00, noche >= 18:00.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -28,6 +28,23 @@ def franja_de(inicio: str) -> str:
     if m < 18 * 60:
         return "tarde"
     return "noche"
+
+
+# ------------------------------------------------------------------------ jornada
+
+JORNADAS = ("noche", "tarde")
+# Ventana en minutos: todos los bloques del NRC deben caer dentro (inicio >= desde, fin <= hasta).
+VENTANAS: dict[str, tuple[int, int]] = {"noche": (18 * 60, 22 * 60), "tarde": (12 * 60, 18 * 60)}
+
+
+def en_jornada(bloques: Iterable[Bloque], jornada: str) -> bool:
+    """True si todos los bloques caen en la ventana de la jornada.
+
+    Un NRC sin bloques (virtual) se muestra en cualquier jornada. Los sincrónicos sí tienen
+    bloques y aplican la misma ventana.
+    """
+    desde, hasta = VENTANAS[jornada]
+    return all(minutos(b["inicio"]) >= desde and minutos(b["fin"]) <= hasta for b in bloques)
 
 
 def se_cruzan(a: Bloque, b: Bloque) -> bool:
@@ -136,8 +153,10 @@ def elegir_alternativa(
     candidatos: Iterable[NrcInfo],
     libres: Mapping[str, int],
     ocupado: Mapping[str, Mapping[str, Any]],
+    jornada: str | None = None,
 ) -> NrcInfo | None:
-    """NRC alternativo más cercano al ``objetivo``: misma materia, con cupo y sin cruce.
+    """NRC alternativo más cercano al ``objetivo``: misma materia, con cupo, sin cruce y,
+    si se indica ``jornada``, dentro de su ventana.
 
     Orden: misma franja y mismos días > menor diferencia de hora de inicio > misma sede
     (el NRC como último desempate, para que el resultado sea determinista).
@@ -149,6 +168,7 @@ def elegir_alternativa(
         and c.materia_id == objetivo.materia_id
         and libres.get(c.nrc, 0) > 0
         and nrc_en_conflicto(c.bloques, ocupado) is None
+        and (jornada is None or en_jornada(c.bloques, jornada))
     ]
     if not validos:
         return None
@@ -203,3 +223,92 @@ def armar_horario(
             total += cand.creditos
             break
     return elegidos
+
+
+# ----------------------------------------------------------------------------- avance
+
+
+@dataclass(frozen=True)
+class MateriaPensum:
+    materia_id: str
+    nombre: str
+    semestre: int
+    electiva: bool
+
+
+@dataclass(frozen=True)
+class ItemAvance:
+    materia_id: str
+    nombre: str
+    semestre: int
+    estado: str  # inscrita | habilitada | bloqueada_prerrequisito | sin_oferta
+
+
+@dataclass(frozen=True)
+class Avance:
+    semestre_actual: int
+    total_pendientes: int
+    inscritas: int
+    faltan: int
+    habilitadas_sin_inscribir: int
+    materias: list[ItemAvance]
+    atrasadas: list[ItemAvance]
+    mensaje: str
+
+
+def mensaje_avance(total: int, faltan: int, habilitadas: int) -> str:
+    if total == 0:
+        return "Estás al día: no tienes materias pendientes de tu semestre."
+    if faltan == 0:
+        return "Ya tienes inscritas todas las materias de tu semestre. ¡Buen trabajo!"
+    falta = "Te falta 1 materia" if faltan == 1 else f"Te faltan {faltan} materias"
+    if habilitadas == 0:
+        puedes = "por ahora no hay ninguna con oferta para inscribir"
+    elif habilitadas == 1:
+        puedes = "puedes inscribir 1 ahora"
+    else:
+        puedes = f"puedes inscribir {habilitadas} ahora"
+    return f"{falta} de tu semestre; {puedes}."
+
+
+def calcular_avance(
+    semestre_actual: int,
+    pensum: Iterable[MateriaPensum],
+    aprobadas: frozenset[str] | set[str],
+    inscritas: frozenset[str] | set[str],
+    habilitada: Callable[[str], bool],
+    con_oferta: Callable[[str], bool],
+) -> Avance:
+    """Obligatorias del semestre actual sin aprobar (estrictamente ``semestre == actual``).
+
+    Las obligatorias de semestres anteriores sin aprobar se informan aparte en ``atrasadas`` y
+    no cuentan en ``total_pendientes``, ``faltan`` ni en el mensaje. Estado de cada una:
+    inscrita > bloqueada_prerrequisito > sin_oferta > habilitada.
+    """
+
+    def estado(mid: str) -> str:
+        if mid in inscritas:
+            return "inscrita"
+        if not habilitada(mid):
+            return "bloqueada_prerrequisito"
+        return "habilitada" if con_oferta(mid) else "sin_oferta"
+
+    def item(m: MateriaPensum) -> ItemAvance:
+        return ItemAvance(m.materia_id, m.nombre, m.semestre, estado(m.materia_id))
+
+    obligatorias = [m for m in pensum if not m.electiva and m.materia_id not in aprobadas]
+    actuales = [item(m) for m in obligatorias if m.semestre == semestre_actual]
+    atrasadas = [item(m) for m in obligatorias if m.semestre < semestre_actual]
+    n_inscritas = sum(1 for i in actuales if i.estado == "inscrita")
+    n_hab = sum(1 for i in actuales if i.estado == "habilitada")
+    faltan = len(actuales) - n_inscritas
+    return Avance(
+        semestre_actual=semestre_actual,
+        total_pendientes=len(actuales),
+        inscritas=n_inscritas,
+        faltan=faltan,
+        habilitadas_sin_inscribir=n_hab,
+        materias=actuales,
+        atrasadas=atrasadas,
+        mensaje=mensaje_avance(len(actuales), faltan, n_hab),
+    )

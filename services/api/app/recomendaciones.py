@@ -6,7 +6,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from .contexto import Contexto
-from .dominio import CandidataMateria, armar_horario, evaluar_habilitacion
+from .dominio import CandidataMateria, armar_horario, en_jornada, evaluar_habilitacion
 from .schemas import NrcOut, RecomendacionOut
 from .servicio import leer_ocupado_y_libres, nrc_a_dict
 
@@ -42,7 +42,9 @@ class RecomendadorHeuristico:
                 continue
             materia = cat.materias[mid]
             opciones = [
-                cat.nrc_info[n] for n in cat.nrc_por_materia.get(mid, []) if libres.get(n, 0) > 0
+                cat.nrc_info[n]
+                for n in cat.nrc_por_materia.get(mid, [])
+                if libres.get(n, 0) > 0 and en_jornada(cat.nrc_info[n].bloques, est.jornada)
             ]
             if not opciones:
                 sin_oferta.append(mid)
