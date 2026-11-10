@@ -1,4 +1,4 @@
-.PHONY: up down ps logs clean seed test lint load-test e2e storybook lake env
+.PHONY: screenshots up down ps logs clean seed test lint load-test e2e storybook lake env
 
 # Exporta las variables de .env a los comandos que lo necesiten
 LOAD_ENV = set -a; . ./.env; set +a;
@@ -45,8 +45,13 @@ lint:
 load-test:
 	@echo "load-test: disponible en fase 7"
 
-e2e:
-	@echo "e2e: disponible en fase 7"
+# Playwright contra la app levantada (make up && make seed). WEB_URL cambia el destino.
+e2e: env
+	$(LOAD_ENV) cd web && npx playwright test
+
+# Capturas de la fase 5 (web/tests/screenshots/fase5) contra la app levantada
+screenshots: env
+	$(LOAD_ENV) cd web && npm run screenshots:fase5
 
 storybook:
 	cd web && npm run storybook
