@@ -42,7 +42,7 @@ async def test_difusor_envia_heartbeat(redis: Redis, monkeypatch: pytest.MonkeyP
     difusor = Difusor(redis, f"cupos:tst-{uuid.uuid4().hex[:8]}")
     flujo = difusor.eventos()
     await anext(flujo)  # retry
-    assert await asyncio.wait_for(anext(flujo), timeout=2) == ": heartbeat\n\n"
+    assert await asyncio.wait_for(anext(flujo), timeout=2) == "event: ping\ndata: {}\n\n"
     await flujo.aclose()
 
 

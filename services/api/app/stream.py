@@ -94,7 +94,8 @@ class Difusor:
     async def eventos(
         self, hasta: float | None = None, conexion: Conexion | None = None
     ) -> AsyncGenerator[str, None]:
-        """Flujo SSE con heartbeat cada 15 s. Termina al llegar a ``hasta`` (epoch s), que es
+        """Flujo SSE con `event: ping` cada 15 s (un comentario SSE no llega a JS, y el
+        watchdog del cliente necesita verlo). Termina al llegar a ``hasta`` (epoch s), que es
         cuando vence la sesión que pidió el ticket."""
         cola: asyncio.Queue[str] = asyncio.Queue(maxsize=256)
         self._colas.add(cola)
@@ -113,7 +114,7 @@ class Difusor:
                     yield f"event: cupo\ndata: {datos}\n\n"
                 except TimeoutError:
                     if hasta is None or hasta - time.time() > 0:
-                        yield ": heartbeat\n\n"
+                        yield "event: ping\ndata: {}\n\n"
         finally:
             self._colas.discard(cola)
             if conexion is not None:
