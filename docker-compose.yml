@@ -130,7 +130,7 @@ services:
       context: .
       dockerfile: services/api/Dockerfile
     <<: *restart
-    mem_limit: 256m
+    mem_limit: 320m
     read_only: true
     tmpfs: ["/tmp"]
     cap_drop: [ALL]
@@ -146,6 +146,10 @@ services:
       DEMO_PASSWORD: ${DEMO_PASSWORD:?falta DEMO_PASSWORD en .env}
       RESERVA_TTL_S: ${RESERVA_TTL_S:-300}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minio-dev}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minio-dev-secret}
+      MINIO_SECURE: "false"
     depends_on:
       mongo: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -188,7 +192,45 @@ services:
       start_period: 20s
     networks: [inscripcion]
 
-  # lake-worker:    # fase 6 (bronce -> plata -> oro con DuckDB)
+  # --- Fase 6: data lake (bronce continuo; plata y oro cada LAKE_RECALCULO_MIN minutos) ---
+  lake-worker:
+    build:
+      context: .
+      dockerfile: services/lake/Dockerfile
+    <<: *restart
+    mem_limit: 384m
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      KAFKA_BROKERS: redpanda:9092
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minio-dev}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minio-dev-secret}
+      MINIO_SECURE: "false"
+      MONGO_URL: mongodb://mongo:27017/inscripcion
+      REDIS_URL: redis://redis:6379/0
+      PERIODO: ${PERIODO:-2027-1}
+      HASH_SALT: ${HASH_SALT:?falta HASH_SALT en .env}
+      LAKE_RECALCULO_MIN: ${LAKE_RECALCULO_MIN:-5}
+      LAKE_LOTE_MAX: ${LAKE_LOTE_MAX:-500}
+      LAKE_LOTE_MAX_S: ${LAKE_LOTE_MAX_S:-3}
+      LAKE_DUCKDB_MEMORIA: 192MB
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      redpanda: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    healthcheck:
+      # sin HTTP: la ingesta escribe /tmp/heartbeat cada 5 s mientras su bucle esta vivo
+      test: ["CMD", "python", "-c", "import os,time,sys; sys.exit(0 if time.time()-os.path.getmtime('/tmp/heartbeat')<30 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks: [inscripcion]
+
   # --- Fase 5: web (Next.js standalone; el navegador habla con /api/v1/* y Next lo reenvia a api) ---
   web:
     build:

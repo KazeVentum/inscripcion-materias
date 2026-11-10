@@ -1,4 +1,4 @@
-.PHONY: screenshots up down ps logs clean seed test lint load-test e2e storybook lake env
+.PHONY: lake-limpiar screenshots up down ps logs clean seed test lint load-test e2e storybook lake simular env
 
 # Exporta las variables de .env a los comandos que lo necesiten
 LOAD_ENV = set -a; . ./.env; set +a;
@@ -32,6 +32,7 @@ test: env
 	$(LOAD_ENV) cd data/seed && uv run pytest -q
 	$(LOAD_ENV) cd services/api && uv run pytest -q
 	$(LOAD_ENV) cd services/enroll-worker && uv run pytest -q
+	$(LOAD_ENV) cd services/lake && uv run pytest -q
 	cd web && npm test
 	cd web && npm run test:stories
 
@@ -39,6 +40,7 @@ lint:
 	cd data/seed && uv run ruff check . && uv run mypy
 	cd services/api && uv run ruff check . && uv run mypy
 	cd services/enroll-worker && uv run ruff check . && uv run mypy
+	cd services/lake && uv run ruff check . && uv run mypy
 	cd web && npm run typecheck
 	cd web && npm run lint
 
@@ -56,5 +58,15 @@ screenshots: env
 storybook:
 	cd web && npm run storybook
 
-lake:
-	@echo "lake: disponible en fase 6"
+# Bronce -> plata -> oro a demanda (stack levantado). Imprime los conteos de validacion.
+lake: env
+	$(LOAD_ENV) cd services/lake && uv run python -m lake.cli
+
+# Vacia bronce, plata y oro (empezar una demo sin eventos viejos)
+lake-limpiar: env
+	$(LOAD_ENV) cd services/lake && uv run python -m lake.cli --limpiar
+
+# Trafico real contra la API (estudiantes sinteticos, no los demos). Para partir de cero:
+# make seed && make simular && make lake. Opciones: make simular ARGS="--estudiantes 500"
+simular: env
+	$(LOAD_ENV) cd services/lake && uv run python -m lake.simulador $(ARGS)
