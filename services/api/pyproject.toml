@@ -11,6 +11,7 @@ dependencies = [
     "pymongo~=4.13",
     "aiokafka~=0.12",
     "pyjwt~=2.10",
+    "duckdb~=1.4",
 ]
 
 [dependency-groups]

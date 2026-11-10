@@ -14,9 +14,11 @@ from pymongo import AsyncMongoClient
 from redis.asyncio import Redis
 
 from . import claves, scripts
+from .analitica import LectorOro
 from .catalogo import Catalogo
 from .config import Settings
 from .contexto import Contexto
+from .coordinacion import router as router_coordinacion
 from .errores import registrar_manejadores
 from .eventos import Productor
 from .recomendaciones import RecomendadorHeuristico
@@ -39,6 +41,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await productor.iniciar()
     difusor = Difusor(redis, claves.canal_cupos(settings.periodo), settings.max_sse_por_estudiante)
     difusor.iniciar()
+    app.state.lector_oro = LectorOro(settings)
     app.state.ctx = Contexto(
         settings=settings,
         db=db,
@@ -79,4 +82,5 @@ def crear_app() -> FastAPI:
     )
     registrar_manejadores(app)
     app.include_router(router, prefix="/api/v1")
+    app.include_router(router_coordinacion, prefix="/api/v1")
     return app

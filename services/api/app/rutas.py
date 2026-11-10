@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.background import BackgroundTask
 
 from . import claves
+from .config import COORDINADORES, ROL_COORDINADOR
 from .contexto import Contexto
 from .dominio import MateriaPensum, calcular_avance, en_jornada, evaluar_habilitacion
 from .errores import ApiError
@@ -118,8 +119,13 @@ async def login(body: LoginIn, ctx: Ctx) -> LoginOut:
             "Demasiados intentos fallidos; espera un momento",
             headers={"Retry-After": str(int(espera) + 1)},
         )
-    est = await ctx.catalogo.buscar_para_login(ctx.db, body.usuario)
     clave_ok = hmac.compare_digest(body.password.encode(), ctx.settings.demo_password.encode())
+    coord = body.usuario.strip().lower()
+    if coord in COORDINADORES and clave_ok:
+        token, ttl = crear_token(ctx.settings, coord, ROL_COORDINADOR)
+        log.info("login coordinador=%s", coord)
+        return LoginOut(accessToken=token, expiraEnS=ttl, estudianteId=coord, rol="coordinador")
+    est = await ctx.catalogo.buscar_para_login(ctx.db, body.usuario)
     if est is None or not clave_ok:
         ctx.limite_login.registrar_fallo(clave_limite)
         raise ApiError(401, "credenciales_invalidas", "Usuario o contraseña incorrectos")

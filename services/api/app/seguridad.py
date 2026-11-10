@@ -10,7 +10,7 @@ import jwt
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from .config import Settings
+from .config import COORDINADORES, ROL_COORDINADOR, ROL_ESTUDIANTE, Settings
 from .errores import ApiError
 
 ISSUER = "inscripcion-api"
@@ -27,7 +27,9 @@ class Sesion:
     exp: int  # expiración del JWT de sesión (epoch s)
 
 
-def crear_token(settings: Settings, estudiante_id: str) -> tuple[str, int]:
+def crear_token(
+    settings: Settings, estudiante_id: str, rol: str = ROL_ESTUDIANTE
+) -> tuple[str, int]:
     ahora = int(time.time())
     ttl = settings.jwt_ttl_min * 60
     token = jwt.encode(
@@ -37,6 +39,7 @@ def crear_token(settings: Settings, estudiante_id: str) -> tuple[str, int]:
             "exp": ahora + ttl,
             "iss": ISSUER,
             "aud": AUD_SESION,
+            "rol": rol,
         },
         settings.jwt_secret,
         "HS256",
@@ -95,8 +98,23 @@ async def sesion_actual(
     if cred is None:
         raise ApiError(401, "no_autorizado", "Falta el encabezado Authorization: Bearer <token>")
     datos = decodificar(request.app.state.ctx.settings, cred.credentials, AUD_SESION)
+    if datos.get("rol", ROL_ESTUDIANTE) != ROL_ESTUDIANTE:
+        raise ApiError(403, "rol_no_permitido", "Este recurso es solo para estudiantes")
     await _verificar_existe(request, datos["sub"])
     return Sesion(datos["sub"], int(datos["exp"]))
+
+
+async def coordinador_actual(
+    request: Request,
+    cred: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
+) -> str:
+    """Solo rol coordinador (claim `rol` firmado por la API); el estudiante recibe 403."""
+    if cred is None:
+        raise ApiError(401, "no_autorizado", "Falta el encabezado Authorization: Bearer <token>")
+    datos = decodificar(request.app.state.ctx.settings, cred.credentials, AUD_SESION)
+    if datos.get("rol") != ROL_COORDINADOR or datos["sub"] not in COORDINADORES:
+        raise ApiError(403, "rol_no_permitido", "Este recurso es solo para coordinación")
+    return str(datos["sub"])
 
 
 async def estudiante_actual(sesion: Annotated[Sesion, Depends(sesion_actual)]) -> str:

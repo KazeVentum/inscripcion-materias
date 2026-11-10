@@ -46,5 +46,24 @@ class Settings:
     max_sse_por_estudiante: int = 3
     ticket_ttl_s: int = 60
 
+    # Analitica (fase 6): gold en MinIO leido con DuckDB + httpfs
+    minio_endpoint: str = field(default_factory=lambda: _env("MINIO_ENDPOINT", "localhost:9000"))
+    minio_access_key: str = field(default_factory=lambda: _env("MINIO_ACCESS_KEY", "minio-dev"))
+    minio_secret_key: str = field(
+        default_factory=lambda: _env("MINIO_SECRET_KEY", "minio-dev-secret")
+    )
+    minio_secure: bool = field(
+        default_factory=lambda: _env("MINIO_SECURE", "false").lower() in ("1", "true", "yes")
+    )
+    duckdb_extensiones: str = field(default_factory=lambda: _env("DUCKDB_EXTENSION_DIR", ""))
+    analitica_cache_s: float = field(default_factory=lambda: float(_env("ANALITICA_CACHE_S", "10")))
+    bucket_oro: str = "gold"
+
     topic_intentos: str = "inscripcion.intentos"
     topic_busquedas: str = "oferta.busquedas"
+
+
+# Usuarios sinteticos con rol coordinador (misma DEMO_PASSWORD; no estan en `estudiantes`).
+COORDINADORES: dict[str, str] = {"coord-0001": "Coordinación académica (sintético)"}
+ROL_ESTUDIANTE = "estudiante"
+ROL_COORDINADOR = "coordinador"

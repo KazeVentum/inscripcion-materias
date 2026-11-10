@@ -25,8 +25,13 @@ export interface LoginOut {
   accessToken: string;
   tokenType: "bearer";
   expiraEnS: number;
+  /** Id del usuario: est-000123 o coord-0001. */
   estudianteId: string;
+  /** Claim `rol` del JWT; el coordinador no puede llamar a los endpoints de estudiante (403). */
+  rol: Rol;
 }
+
+export type Rol = "estudiante" | "coordinador";
 
 export interface PerfilOut {
   estudianteId: string;
@@ -202,4 +207,173 @@ export interface BloqueCalendarioDatos {
   vencimiento?: FechaIso | null;
   /** Conflicto: NRC con el que cruza. */
   cruzaCon?: string | null;
+}
+
+// ------------------------------------------------- coordinación (HU5, solo rol coordinador)
+// GET /api/v1/coordinacion/...  Todas las respuestas traen `generadoEn` (ISO UTC del último
+// cálculo del lake) o null si el oro aún no existe; en ese caso las listas vienen vacías.
+
+/** GET /coordinacion/me */
+export interface CoordinadorOut {
+  usuarioId: string;
+  nombre: string;
+  rol: "coordinador";
+}
+
+export interface CheckValidacionOut {
+  nombre: string;
+  ok: boolean;
+  esperado: number;
+  obtenido: number;
+}
+
+/** Cuadratura bronce → plata → oro: líneas bronce = eventos plata + duplicados + inválidos. */
+export interface ValidacionOut {
+  cuadra: boolean;
+  lineasBronce: number;
+  eventosPlata: number;
+  duplicados: number;
+  invalidos: number;
+  checks: CheckValidacionOut[];
+}
+
+/** GET /coordinacion/analitica/resumen */
+export interface ResumenOut {
+  generadoEn: FechaIso | null;
+  periodo: string | null;
+  eventos: number;
+  intentos: number;
+  exitos: number;
+  sinCupo: number;
+  /** 0 a 1; null si no hay intentos. */
+  tasaExito: number | null;
+  estudiantesUnicos: number;
+  nrcTotales: number;
+  nrcLlenos: number;
+  /** ocupados / cupo total, 0 a 1. */
+  ocupacionGlobal: number | null;
+  latenciaIntentoP50Ms: number | null;
+  latenciaIntentoP95Ms: number | null;
+  validacion: ValidacionOut | null;
+}
+
+export type OrdenDemanda = "demanda" | "sin_cupo" | "ocupacion" | "vacios" | "tiempo_llenado";
+
+export interface DemandaNrcItem {
+  nrc: string;
+  materiaId: string | null;
+  materia: string | null;
+  semestreMateria: number | null;
+  area: string | null;
+  sede: string | null;
+  modalidad: string | null;
+  franja: string | null;
+  cupoTotal: number | null;
+  intentos: number;
+  exitos: number;
+  sinCupo: number;
+  /** Intentos con otro resultado (cruce, prerrequisito, fuera_de_jornada...). */
+  otros: number;
+  /** Estudiantes distintos que lo intentaron. */
+  estudiantes: number;
+  tasaExito: number | null;
+  ocupados: number;
+  /** 0 a 1; null si el NRC no está en el catálogo. */
+  ocupacion: number | null;
+  cuposVacios: number | null;
+  primerIntento: FechaIso | null;
+  /** Momento en que alcanzó el cupo total; null si nunca se llenó. */
+  llenoEn: FechaIso | null;
+  tiempoHastaLlenarseS: number | null;
+}
+
+/** GET /coordinacion/analitica/demanda-nrc?orden=&limite=&materiaId=&soloConIntentos= */
+export interface DemandaNrcOut {
+  generadoEn: FechaIso | null;
+  /** NRC en la tabla antes de aplicar `limite`. */
+  total: number;
+  items: DemandaNrcItem[];
+}
+
+export interface OcupacionFranjaItem {
+  franja: Franja | "desconocida";
+  sede: string;
+  nrcs: number;
+  cupoTotal: number;
+  ocupados: number;
+  cuposVacios: number;
+  ocupacion: number | null;
+  nrcLlenos: number;
+  intentos: number;
+  exitos: number;
+  sinCupo: number;
+}
+
+/** GET /coordinacion/analitica/ocupacion-franja */
+export interface OcupacionFranjaOut {
+  generadoEn: FechaIso | null;
+  items: OcupacionFranjaItem[];
+}
+
+export interface CombinacionItem {
+  programa: string;
+  semestre: number;
+  nrcA: string;
+  nrcB: string;
+  materiaA: string | null;
+  materiaB: string | null;
+  tituloA: string | null;
+  tituloB: string | null;
+  /** Estudiantes que tienen ambos NRC inscritos (mínimo 2). */
+  estudiantes: number;
+  /** estudiantes / estudiantes con inscripción en su programa y semestre, 0 a 1. */
+  soporte: number;
+}
+
+/** GET /coordinacion/analitica/combinaciones?semestre=&limite= (más estudiantes primero) */
+export interface CombinacionesOut {
+  generadoEn: FechaIso | null;
+  total: number;
+  items: CombinacionItem[];
+}
+
+export type TipoEvento = "intento" | "confirmacion" | "cancelacion" | "busqueda";
+
+export interface AuditoriaFila {
+  /** YYYY-MM-DD; null en las filas de `total`. */
+  fecha: string | null;
+  tipo: TipoEvento;
+  resultado: string;
+  n: number;
+  latenciaP50Ms: number | null;
+  latenciaP95Ms: number | null;
+  latenciaMaxMs: number | null;
+}
+
+/** GET /coordinacion/analitica/auditoria */
+export interface AuditoriaOut {
+  generadoEn: FechaIso | null;
+  /** Por tipo y resultado, todo el periodo. */
+  total: AuditoriaFila[];
+  /** Por día, tipo y resultado. */
+  porDia: AuditoriaFila[];
+}
+
+export interface DemandaInsatisfechaItem {
+  materiaId: string;
+  materia: string | null;
+  semestreMateria: number | null;
+  area: string | null;
+  sinCupo: number;
+  estudiantesAfectados: number;
+  nrcAfectados: number;
+  intentos: number;
+  /** sinCupo / intentos, 0 a 1. */
+  tasaSinCupo: number;
+}
+
+/** GET /coordinacion/analitica/demanda-insatisfecha?limite= (más sin cupo primero) */
+export interface DemandaInsatisfechaOut {
+  generadoEn: FechaIso | null;
+  items: DemandaInsatisfechaItem[];
 }
