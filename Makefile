@@ -7,10 +7,13 @@ env:
 	@test -f .env || (cp .env.example .env && echo ".env creado desde .env.example")
 
 up: env
-	# Levanta todos los servicios de larga vida; los init (profile "init") son one-shot
-	docker compose up -d --build --wait --remove-orphans
+	# Primero broker y almacenamiento con sus topics y buckets: los workers que se suscriben
+	# antes de que existan los topics los crearian con 1 particion (auto-create de Redpanda)
+	docker compose up -d --build --wait redpanda minio
 	docker compose --profile init run --rm --no-deps minio-init
 	docker compose --profile init run --rm --no-deps redpanda-init
+	# Despues todos los servicios de larga vida; los init (profile "init") son one-shot
+	docker compose up -d --build --wait --remove-orphans
 	@docker compose ps
 
 down:
