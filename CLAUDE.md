@@ -41,7 +41,7 @@ Hoy el estudiante inscribe con un Excel de NRC sin cupos ni validación previa.
 1. Plan + `CLAUDE.md` + subagentes. ✅
 2. Infra Docker + datos sintéticos cargados. ✅
 3. Backend con inscripción atómica y eventos. ✅
-4. Brief de diseño → sistema de diseño en Storybook.
+4. Brief de diseño → sistema de diseño en Storybook. ✅
 5. Pantallas del estudiante con cupos en vivo.
 6. Data lake y página de analítica.
 7. Pruebas de concurrencia y carga + capturas.

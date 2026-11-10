@@ -1,0 +1,177 @@
+/*
+ * Piezas que las utilidades no expresan bien: vidrio de la bandeja, rayados, fondo del
+ * calendario y animación de la silla. Todo sale de tokens.
+ */
+
+/* ---------------------------------------------------------------- vidrio */
+/* Único uso de glassmorphism (brief §1): la bandeja inferior en móvil. */
+.vidrio {
+  background: var(--surface);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .vidrio:not([data-solido="true"]) {
+    background: var(--sheet-bg);
+    -webkit-backdrop-filter: var(--sheet-blur);
+    backdrop-filter: var(--sheet-blur);
+  }
+}
+
+/* --------------------------------------------------------------- sillas */
+.silla {
+  flex: 1 1 0;
+  min-width: 0;
+  border-radius: var(--r-seat);
+  background: var(--seat-taken);
+  transition: background-color var(--dur-count) var(--ease-in-out);
+}
+.silla[data-libre="true"] {
+  background: var(--seat-free);
+}
+.silla[data-ultima="true"] {
+  background: var(--danger);
+  outline: 1.5px solid var(--danger);
+  outline-offset: 1px;
+}
+.silla[data-agotada="true"] {
+  background: repeating-linear-gradient(135deg, var(--seat-taken) 0 2px, transparent 2px 4px);
+  box-shadow: inset 0 0 0 1px var(--seat-taken);
+}
+/* La silla que se acaba de ocupar se "apaga": baja desde el color libre. */
+.silla[data-recien="true"] {
+  animation: silla-se-ocupa var(--dur-count) var(--ease-in-out);
+}
+@keyframes silla-se-ocupa {
+  0% {
+    background: var(--seat-free);
+    transform: scaleY(1);
+  }
+  40% {
+    transform: scaleY(0.6);
+  }
+  100% {
+    background: var(--seat-taken);
+    transform: scaleY(1);
+  }
+}
+.barra-continua {
+  position: relative;
+  border-radius: var(--r-seat);
+  background: var(--seat-taken);
+  overflow: hidden;
+}
+.barra-continua > .relleno {
+  position: absolute;
+  inset: 0 0 0 auto;
+  background: var(--seat-free);
+  transition: width var(--dur-count) var(--ease-in-out);
+}
+.barra-continua > .marcas {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(to right, var(--surface) 0 2px, transparent 2px);
+  background-size: var(--paso-marca) 100%;
+}
+
+/* Número que cambió: contorno breve (estático 2 s con movimiento reducido). */
+.cifra-cambio {
+  border-radius: 4px;
+  animation: cifra-cambio 1.2s var(--ease-out);
+}
+@keyframes cifra-cambio {
+  0%,
+  35% {
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+  100% {
+    box-shadow: 0 0 0 2px transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cifra-cambio {
+    animation: none;
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+  .silla[data-recien="true"] {
+    animation: none;
+  }
+}
+
+/* ------------------------------------------------------------ calendario */
+.cal-columna {
+  position: relative;
+  background-color: var(--surface);
+  background-image: linear-gradient(var(--surface-2), var(--surface-2)), var(--cal-lineas, none);
+  background-repeat: no-repeat, repeat-y;
+  background-size:
+    100% var(--cal-noche-h),
+    100% var(--cal-px-hora);
+  background-position:
+    0 var(--cal-noche-top),
+    0 0;
+}
+.cal-columna[data-sabado="true"] {
+  background-image:
+    linear-gradient(var(--surface-2), var(--surface-2)),
+    linear-gradient(var(--surface-2), var(--surface-2)), var(--cal-lineas, none);
+  background-repeat: no-repeat, no-repeat, repeat-y;
+  background-size:
+    100% var(--cal-noche-h),
+    100% var(--cal-manana-h),
+    100% var(--cal-px-hora);
+  background-position:
+    0 var(--cal-noche-top),
+    0 0,
+    0 0;
+}
+.cal-columna::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--border);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.bloque-conflicto {
+  background: repeating-linear-gradient(135deg, var(--danger-soft) 0 5px, var(--surface) 5px 9px);
+}
+
+/* ------------------------------------------------------- entradas/salidas */
+@keyframes aparece {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+@keyframes toast-entra {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+@keyframes toast-sale {
+  to {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+@keyframes acordeon-abre {
+  from {
+    height: 0;
+    opacity: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+    opacity: 1;
+  }
+}
+@keyframes acordeon-cierra {
+  from {
+    height: var(--radix-accordion-content-height);
+    opacity: 1;
+  }
+  to {
+    height: 0;
+    opacity: 0;
+  }
+}

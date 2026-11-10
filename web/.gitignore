@@ -1,0 +1,3 @@
+*.tsbuildinfo
+next-env.d.ts
+__screenshots__/

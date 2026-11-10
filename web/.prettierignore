@@ -1,0 +1,7 @@
+node_modules
+.next
+storybook-static
+next-env.d.ts
+tests/screenshots
+package-lock.json
+*.tsbuildinfo

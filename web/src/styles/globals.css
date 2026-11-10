@@ -1,0 +1,158 @@
+@import "tailwindcss";
+@import "./tokens.css";
+@import "./componentes.css";
+
+/*
+ * Tailwind solo como capa de utilidades sobre los tokens. Se borran los temas por defecto
+ * (colores, radios, sombras, fuentes, tamaños) para que ninguna utilidad "por defecto" exista.
+ */
+@theme inline {
+  --color-*: initial;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-text: var(--text);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-primary-ink: var(--primary-ink);
+  --color-primary-soft: var(--primary-soft);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-on-danger: var(--on-danger);
+  --color-on-success: var(--on-success);
+  --color-info: var(--info);
+  --color-focus: var(--focus);
+  --color-seat-free: var(--seat-free);
+  --color-seat-taken: var(--seat-taken);
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --font-*: initial;
+  --font-head: var(--font-head);
+  --font-body: var(--font-body);
+
+  --text-*: initial;
+  --text-title: var(--fs-title);
+  --text-title--line-height: var(--lh-title);
+  --text-section: var(--fs-section);
+  --text-section--line-height: var(--lh-section);
+  --text-subject: var(--fs-subject);
+  --text-subject--line-height: var(--lh-subject);
+  --text-body: var(--fs-body);
+  --text-body--line-height: var(--lh-body);
+  --text-compact: var(--fs-compact);
+  --text-compact--line-height: var(--lh-compact);
+  --text-meta: var(--fs-meta);
+  --text-meta--line-height: var(--lh-meta);
+  --text-block: var(--fs-block);
+  --text-block--line-height: var(--lh-block);
+  --text-seats: var(--fs-seats);
+  --text-seats--line-height: var(--lh-seats);
+
+  --radius-*: initial;
+  --radius-seat: var(--r-seat);
+  --radius-chip: var(--r-chip);
+  --radius-control: var(--r-control);
+  --radius-card: var(--r-card);
+  --radius-sheet: var(--r-sheet);
+  --radius-pill: var(--r-pill);
+
+  --shadow-*: initial;
+  --shadow-e1: var(--shadow-1);
+  --shadow-e2: var(--shadow-2);
+  --shadow-edge: var(--edge);
+
+  --ease-*: initial;
+  --ease-out: var(--ease-out);
+  --ease-in-out: var(--ease-in-out);
+
+  --animate-*: initial;
+  --animate-pulso: pulso var(--dur-pulse) var(--ease-in-out) infinite;
+  --animate-giro: giro 0.8s linear infinite;
+
+  /* Base 4 px: p-1 = 4, p-4 = 16… (escala del brief: 0.5 1 2 3 4 5 6 8 10 14). */
+  --spacing: 4px;
+}
+
+@keyframes pulso {
+  50% {
+    opacity: 0.55;
+  }
+}
+@keyframes giro {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    border-color: var(--border);
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-head);
+    margin: 0;
+  }
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--primary-soft);
+    color: var(--text);
+  }
+}
+
+@layer utilities {
+  /* Declarar después de cualquier shorthand `font:` (lo reinicia). */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  .stretch-calendar {
+    font-stretch: var(--stretch-calendar);
+  }
+  .measure {
+    max-width: var(--measure);
+  }
+}
+
+/* Movimiento reducido: todo pasa a fundido corto o instantáneo. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 80ms !important;
+    scroll-behavior: auto !important;
+  }
+}

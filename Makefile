@@ -32,11 +32,15 @@ test: env
 	$(LOAD_ENV) cd data/seed && uv run pytest -q
 	$(LOAD_ENV) cd services/api && uv run pytest -q
 	$(LOAD_ENV) cd services/enroll-worker && uv run pytest -q
+	cd web && npm test
+	cd web && npm run test:stories
 
 lint:
 	cd data/seed && uv run ruff check . && uv run mypy
 	cd services/api && uv run ruff check . && uv run mypy
 	cd services/enroll-worker && uv run ruff check . && uv run mypy
+	cd web && npm run typecheck
+	cd web && npm run lint
 
 load-test:
 	@echo "load-test: disponible en fase 7"
@@ -45,7 +49,7 @@ e2e:
 	@echo "e2e: disponible en fase 7"
 
 storybook:
-	@echo "storybook: disponible en fase 4"
+	cd web && npm run storybook
 
 lake:
 	@echo "lake: disponible en fase 6"
