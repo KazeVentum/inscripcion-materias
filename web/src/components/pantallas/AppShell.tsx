@@ -10,7 +10,7 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { usePerfil } from "@/lib/api/hooks";
 import { cerrarSesion } from "@/lib/api/sesion";
 import { cn } from "@/lib/cn";
-import { textoJornada } from "@/lib/horario";
+import { ventanaJornada } from "@/lib/horario";
 import { RutaProtegida } from "./RutaProtegida";
 
 const ENLACES = [
@@ -61,10 +61,20 @@ function Encabezado({ estado }: { estado: ReactNode }) {
           UNIMINUTO
         </p>
         <p
-          className="m-0 text-meta text-text-3 tabular"
+          className="m-0 whitespace-nowrap text-meta text-text-3 tabular"
           {...(perfil.data ? { title: perfil.data.nombre } : {})}
         >
-          {perfil.data ? textoJornada(perfil.data.jornada) : "Inscripción 2027-1"}
+          {perfil.data ? (
+            // Una sola línea en 390 px: en móvil "Jornada" queda solo para lectores de
+            // pantalla y se ve "Noche · 18:00–22:00"; en escritorio se ve completo.
+            <>
+              <span className="max-lg:sr-only">Jornada </span>
+              <span className="max-lg:capitalize">{perfil.data.jornada}</span>
+              {` · ${ventanaJornada(perfil.data.jornada)}`}
+            </>
+          ) : (
+            "Inscripción 2027-1"
+          )}
         </p>
       </div>
 
