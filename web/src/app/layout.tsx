@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { Proveedores } from "@/components/pantallas/Proveedores";
 import { SCRIPT_TEMA } from "@/components/ui/ThemeToggle";
 import "@/styles/globals.css";
 import { clasesFuentes } from "./fuentes";
@@ -24,7 +25,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA }} />
       </head>
-      <body>{children}</body>
+      <body>
+        <Proveedores>{children}</Proveedores>
+      </body>
     </html>
   );
 }

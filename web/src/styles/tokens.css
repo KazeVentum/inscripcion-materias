@@ -60,6 +60,7 @@
 :root,
 [data-theme="light"] {
   --bg: #f3f5f8;
+  --placa-logo: var(--primary); /* la cruz blanca del isotipo no se ve sobre blanco */
   --surface: #ffffff;
   --surface-2: #e8edf3;
   --text: #14233a;
@@ -104,6 +105,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0a0f1d;
+    --placa-logo: transparent; /* oscuro: el isotipo va directo sobre el fondo */
     --surface: #121a2d;
     --surface-2: #1a2440;
     --text: #e2e8f0;
@@ -145,6 +147,7 @@
 
 [data-theme="dark"] {
   --bg: #0a0f1d;
+  --placa-logo: transparent;
   --surface: #121a2d;
   --surface-2: #1a2440;
   --text: #e2e8f0;

@@ -35,6 +35,7 @@
   --color-focus: var(--focus);
   --color-seat-free: var(--seat-free);
   --color-seat-taken: var(--seat-taken);
+  --color-placa: var(--placa-logo);
   --color-transparent: transparent;
   --color-current: currentColor;
 
