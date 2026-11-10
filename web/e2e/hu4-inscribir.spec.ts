@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { ApiUsuario, abrirMateria, cancelarMaterias, entrarPorUi, redis } from "./ayudas";
+import {
+  ApiUsuario,
+  abrirMateria,
+  cancelarMaterias,
+  elegirDuelo,
+  entrarPorUi,
+  redis,
+} from "./ayudas";
 
 test.describe("HU4 · inscribir en un clic", () => {
   test("con cupo: reserva, confirma, queda en el horario y se puede cancelar", async ({
@@ -52,12 +59,11 @@ test.describe("HU4 · inscribir en un clic", () => {
     request,
   }) => {
     const MATERIA = "ISUMBG093";
-    const ULTIMO = "92117";
-    const ALTERNATIVA = "54994";
     const rival = await ApiUsuario.entrar(request, "est-000001");
     const yo = await ApiUsuario.entrar(request, "est-000002");
     await cancelarMaterias(rival, [MATERIA]);
     await cancelarMaterias(yo, [MATERIA]);
+    const { ultimo: ULTIMO, titulo } = await elegirDuelo(rival, yo, MATERIA);
     const original = redis.cupos(ULTIMO);
     redis.fijarCupos(ULTIMO, 1);
 
@@ -73,16 +79,16 @@ test.describe("HU4 · inscribir en un clic", () => {
 
       const aviso = page.getByRole("status").filter({ hasText: `Se agotó ${ULTIMO}.` });
       await expect(aviso).toBeVisible();
-      await expect(aviso).toContainText(`El ${ALTERNATIVA}`);
       await expect(aviso).toContainText("no cruza con tu horario");
 
-      // y la alternativa se inscribe en un clic
-      await aviso.getByRole("button", { name: `Inscribir ${ALTERNATIVA}` }).click();
+      // y la alternativa que ofrece la tarjeta se inscribe en un clic
+      const boton = aviso.getByRole("button", { name: /^Inscribir \d+$/ });
+      const ALTERNATIVA = ((await boton.textContent()) ?? "").replace("Inscribir ", "");
+      expect(ALTERNATIVA).not.toBe(ULTIMO);
+      await boton.click();
       await expect(
-        page.getByText("Inscrita: Electiva CP, NRC 54994.", { exact: true }),
-      ).toBeVisible({
-        timeout: 25_000,
-      });
+        page.getByText(`Inscrita: ${titulo}, NRC ${ALTERNATIVA}.`, { exact: true }),
+      ).toBeVisible({ timeout: 25_000 });
       expect(await yo.estado(ALTERNATIVA)).toBe("confirmada");
     } finally {
       await cancelarMaterias(rival, [MATERIA]);
@@ -96,9 +102,10 @@ test.describe("HU4 · inscribir en un clic", () => {
     request,
   }) => {
     const MATERIA = "ISUMBG093";
-    const ULTIMO = "92117";
+    const rival = await ApiUsuario.entrar(request, "est-000001");
     const yo = await ApiUsuario.entrar(request, "est-000002");
     await cancelarMaterias(yo, [MATERIA]);
+    const { ultimo: ULTIMO } = await elegirDuelo(rival, yo, MATERIA);
     const original = redis.cupos(ULTIMO);
     redis.fijarCupos(ULTIMO, 1);
 
@@ -117,7 +124,7 @@ test.describe("HU4 · inscribir en un clic", () => {
         page
           .getByRole("status")
           .filter({ hasText: `Se agotó ${ULTIMO}.` })
-          .getByRole("button", { name: "Inscribir 54994" }),
+          .getByRole("button", { name: /^Inscribir \d+$/ }),
       ).toBeVisible();
       // no se reservó nada
       expect(await yo.estado(ULTIMO)).toBeNull();
@@ -133,16 +140,14 @@ test.describe("HU4 · inscribir en un clic", () => {
   }) => {
     const api = await ApiUsuario.entrar(request, "est-000002");
     await cancelarMaterias(api, ["ISUMBG103"]);
-    // Sistemas Operativos 11585 y 75535 son LUN 15:15 y MIE 16:45: se cruzan entre sí
-    const antes = await api.nrcDe("ISUMBG103");
-    expect(antes.map((n) => n.nrc).sort()).toEqual(["11585", "75535"]);
+    const objetivo = (await api.nrcDe("ISUMBG103")).find((n) => n.bloques.length > 0)!;
 
     try {
       await entrarPorUi(page, "est-000002");
       await abrirMateria(page, /ISUMBG103/);
-      await page.getByRole("button", { name: "Inscribir 11585" }).click();
+      await page.getByRole("button", { name: `Inscribir ${objetivo.nrc}` }).click();
       await expect(
-        page.getByText("Inscrita: Sistemas Operativos, NRC 11585.", { exact: true }),
+        page.getByText(`Inscrita: Sistemas Operativos, NRC ${objetivo.nrc}.`, { exact: true }),
       ).toBeVisible({
         timeout: 25_000,
       });
@@ -150,7 +155,9 @@ test.describe("HU4 · inscribir en un clic", () => {
       const despues = await api.nrcDe("ISUMBG012");
       for (const n of despues) {
         for (const b of n.bloques) {
-          const choca = b.dia === "LUN" && b.inicio < "16:44" && "15:15" < b.fin;
+          const choca = objetivo.bloques.some(
+            (o) => o.dia === b.dia && b.inicio < o.fin && o.inicio < b.fin,
+          );
           expect(choca, `NRC ${n.nrc}`).toBe(false);
         }
       }
