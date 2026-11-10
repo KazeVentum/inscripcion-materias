@@ -1,0 +1,182 @@
+{
+  "fuente": "Resumen estadístico de NRC de referencia (no contiene filas reales)",
+  "nrcAnalizados": 142,
+  "cupos": {
+    "min": 1,
+    "max": 35,
+    "mediana": 15.0,
+    "p10": 4,
+    "p90": 29
+  },
+  "proporcionModalidad": {
+    "presencial": 0.887,
+    "virtual": 0.077,
+    "sincronica": 0.035
+  },
+  "sesionesPorNrc": {
+    "2": 124,
+    "1": 16,
+    "4": 2
+  },
+  "franjas": {
+    "noche": 119,
+    "tarde": 73,
+    "mañana": 60
+  },
+  "bloquesHorarios": [
+    {
+      "inicio": "18:15",
+      "fin": "19:44",
+      "frecuencia": 58
+    },
+    {
+      "inicio": "20:30",
+      "fin": "21:59",
+      "frecuencia": 47
+    },
+    {
+      "inicio": "16:45",
+      "fin": "18:14",
+      "frecuencia": 25
+    },
+    {
+      "inicio": "15:15",
+      "fin": "16:44",
+      "frecuencia": 25
+    },
+    {
+      "inicio": "13:45",
+      "fin": "15:14",
+      "frecuencia": 16
+    },
+    {
+      "inicio": "11:30",
+      "fin": "12:59",
+      "frecuencia": 12
+    },
+    {
+      "inicio": "08:30",
+      "fin": "09:59",
+      "frecuencia": 12
+    },
+    {
+      "inicio": "10:00",
+      "fin": "11:29",
+      "frecuencia": 11
+    },
+    {
+      "inicio": "07:00",
+      "fin": "08:29",
+      "frecuencia": 9
+    },
+    {
+      "inicio": "19:45",
+      "fin": "21:14",
+      "frecuencia": 6
+    },
+    {
+      "inicio": "09:15",
+      "fin": "10:44",
+      "frecuencia": 6
+    },
+    {
+      "inicio": "12:15",
+      "fin": "13:44",
+      "frecuencia": 5
+    },
+    {
+      "inicio": "18:15",
+      "fin": "20:29",
+      "frecuencia": 4
+    },
+    {
+      "inicio": "19:45",
+      "fin": "21:59",
+      "frecuencia": 4
+    },
+    {
+      "inicio": "09:15",
+      "fin": "11:29",
+      "frecuencia": 3
+    },
+    {
+      "inicio": "07:00",
+      "fin": "09:14",
+      "frecuencia": 2
+    },
+    {
+      "inicio": "08:30",
+      "fin": "10:44",
+      "frecuencia": 2
+    },
+    {
+      "inicio": "10:00",
+      "fin": "12:14",
+      "frecuencia": 1
+    },
+    {
+      "inicio": "10:45",
+      "fin": "12:59",
+      "frecuencia": 1
+    },
+    {
+      "inicio": "10:45",
+      "fin": "12:14",
+      "frecuencia": 1
+    },
+    {
+      "inicio": "14:30",
+      "fin": "15:59",
+      "frecuencia": 1
+    },
+    {
+      "inicio": "16:00",
+      "fin": "17:29",
+      "frecuencia": 1
+    }
+  ],
+  "sedes": [
+    {
+      "sede": "Calle 80",
+      "edificios": [
+        "RGH",
+        "DJC",
+        "SJE",
+        "CL90PC"
+      ]
+    },
+    {
+      "sede": "Perdomo",
+      "edificios": [
+        "CBRGH"
+      ]
+    },
+    {
+      "sede": "San Camilo",
+      "edificios": [
+        "SSANCA"
+      ]
+    }
+  ],
+  "patronesSalon": [
+    "999",
+    "9999",
+    "999LS9",
+    "A999",
+    "A999LS9",
+    "A999LS99",
+    "B999",
+    "B999LS99",
+    "C999",
+    "LAB 999",
+    "LAB. REDES",
+    "LS9",
+    "PEND-LAB",
+    "PENDIENTE"
+  ],
+  "notas": [
+    "Una sesión por bloque; la mayoría de NRC tiene 2 sesiones de 1 h 30 min en días distintos.",
+    "Sábado concentra bloques de mañana; entre semana predominan tarde y noche.",
+    "Algunos NRC de referencia tenían 1-2 cupos disponibles: útil para competencia por el último cupo."
+  ]
+}

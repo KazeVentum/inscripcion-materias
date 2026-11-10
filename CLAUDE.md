@@ -1,0 +1,247 @@
+# Inscripción de asignaturas UNIMINUTO — simulación local
+
+Simulación en Docker de la arquitectura descrita en el informe "Arquitectura de datos –
+Sistema de inscripción de asignaturas UNIMINUTO" (en adelante, "el informe"). Este
+archivo resume las decisiones del informe y es la referencia para los agentes.
+
+Todo subagente lee este archivo completo antes de empezar.
+
+## Problema y regla central
+
+Hoy el estudiante inscribe con un Excel de NRC sin cupos ni validación previa.
+**Regla central (informe, paso 2): el estudiante nunca ve un NRC que no pueda inscribir**
+— sin cupo, con cruce de horario o de una materia sin prerrequisitos aprobados.
+
+## Forma de trabajo (OPC)
+
+- El operador (usuario) define, revisa y aprueba. El orquestador planea y delega.
+- Una fase a la vez. Al cerrar una fase: pruebas en verde, resumen de lo que funciona,
+  y esperar OK del operador.
+- Especificación primero: cada tarea parte de una historia de usuario (HU1–HU5) con
+  criterios Dado/Cuando/Entonces.
+- Nada de datos personales reales. Todos los estudiantes y docentes son sintéticos
+  (Faker `es_CO`, semilla fija `20271`).
+- Sin secretos en el repo: `.env.example` versionado, `.env` ignorado.
+
+### Subagentes (`.claude/agents/`)
+
+| Agente | Modelo | Responsabilidad |
+| --- | --- | --- |
+| `data-synth` | haiku | NRC, estudiantes e historiales sintéticos desde `data/reference/` |
+| `infra` | sonnet | Docker Compose, healthchecks, Makefile, `.env` |
+| `backend` | sonnet | API FastAPI, cupos/cruces/prerrequisitos, eventos, worker |
+| `data-lake` | sonnet | Bronce → plata → oro, consultas DuckDB |
+| `ui-designer` | opus | Brief, tokens, sistema de diseño, revisión visual |
+| `frontend` | sonnet | Pantallas Next.js siguiendo a `ui-designer` |
+| `qa` | haiku | Unitarias, integración, E2E, concurrencia, carga, capturas |
+| `reviewer` | sonnet | Revisión de fase, solo lectura |
+
+## Fases
+
+1. Plan + `CLAUDE.md` + subagentes. ✅
+2. Infra Docker + datos sintéticos cargados.
+3. Backend con inscripción atómica y eventos.
+4. Brief de diseño → sistema de diseño en Storybook.
+5. Pantallas del estudiante con cupos en vivo.
+6. Data lake y página de analítica.
+7. Pruebas de concurrencia y carga + capturas.
+8. README, diagrama y guion de demo de 5 minutos.
+
+## Arquitectura
+
+Separar operación de analítica: el estudiante solo toca NoSQL rápido; todo lo demás
+viaja por eventos al data lake sin frenar la inscripción. El "sistema académico oficial"
+es la fuente de verdad y se simula como colecciones de Mongo propias.
+
+| Azure (producción) | Local (Docker) | Servicio compose | Puerto host |
+| --- | --- | --- | --- |
+| Cosmos DB API MongoDB | MongoDB 7 | `mongo` | 27017 |
+| Azure Cache for Redis | Redis 7 | `redis` | 6379 |
+| Event Hubs | Redpanda (Kafka API) | `redpanda` | 19092 |
+| ADLS Gen2 | MinIO (`bronze`, `silver`, `gold`) | `minio` | 9000 / 9001 consola |
+| Data Factory / Fabric | Workers Python + DuckDB sobre Parquet | `lake-worker` | — |
+| App Service + Functions | API FastAPI + worker de confirmación | `api`, `enroll-worker` | 8000 |
+| App Service (web) | Next.js | `web` | 3000 |
+| Entra ID | Login simulado con JWT, usuarios sintéticos | (en `api`) | — |
+| Power BI | Página `/coordinacion/analitica` en la web | (en `web`) | — |
+
+Storybook corre fuera de Docker (`make storybook`, puerto 6006).
+
+**Restricción de máquina: 8 GB de RAM.** Todo servicio en compose lleva `mem_limit`.
+Redpanda en modo dev (`--smp 1 --memory 512M --overprovisioned`).
+
+### Flujo de inscripción (HU4)
+
+1. `POST /inscripciones` → valida prerrequisitos y cruce (Redis `ocupado:*`).
+2. Script **Lua atómico** en Redis: si `cupos:{periodo}:{nrc} > 0` → `DECR`, crea
+   `reserva:{estudianteId}:{nrc}` con TTL 300 s y agrega los bloques a `ocupado:{estudianteId}`.
+   Si no hay cupo → responde `409` con el NRC alternativo más cercano.
+3. Publica `inscripcion.intento` en Redpanda (siempre, con su resultado).
+4. `enroll-worker` consume, confirma contra el sistema académico simulado (Mongo),
+   escribe `inscripciones` con estado `confirmada` y borra la reserva. Si falla,
+   devuelve el cupo (`INCR`) y marca `rechazada`.
+5. Reserva expirada sin confirmar → conciliación devuelve el cupo.
+6. Cada cambio de cupo se publica en Redis Pub/Sub `cupos:{periodo}` → la API lo emite
+   por **SSE** (`GET /stream/cupos`) a la UI.
+
+### Tópicos Redpanda
+
+| Tópico | Productor | Consumidores |
+| --- | --- | --- |
+| `inscripcion.intentos` | api | enroll-worker, lake-worker |
+| `inscripcion.resultados` | enroll-worker | lake-worker |
+| `oferta.busquedas` | api | lake-worker |
+
+Envelope de evento (JSON):
+
+```json
+{
+  "eventId": "uuid", "tipo": "intento|confirmacion|cancelacion|busqueda",
+  "ocurridoEn": "2026-11-09T21:00:00.123Z", "periodo": "2027-1",
+  "estudianteId": "est-000123", "nrc": "80852", "materiaId": "ISUMBG103",
+  "resultado": "exito|sin_cupo|cruce|prerrequisito|error",
+  "latenciaMs": 12, "alternativaNrc": "86366"
+}
+```
+
+`estudianteId` es un identificador sintético; en plata/oro se usa hash (SHA-256 con sal).
+
+## Modelo de datos
+
+### Mongo (`inscripcion` db) — según informe, paso 6
+
+| Colección | Qué guarda | Clave de partición (Cosmos) |
+| --- | --- | --- |
+| `estudiantes` | id, nombre sintético, correo sintético, programa, sede, semestre, materias aprobadas | `estudianteId` |
+| `pensums` | programa, materias por semestre, prerrequisitos | `programaId` |
+| `materias` | código, nombre, créditos, semestre, área | `materiaId` |
+| `nrc` | NRC, materia, docente, sede, modalidad, periodo, cupo total, bloques embebidos | `materiaId` |
+| `inscripciones` | estudiante, NRC, periodo, estado, fechas | `estudianteId` |
+
+NRC de ejemplo (el horario va embebido):
+
+```json
+{
+  "_id": "80852", "nrc": "80852", "periodo": "2027-1",
+  "materiaId": "ISUMBG103", "titulo": "Sistemas Operativos", "creditos": 3,
+  "sede": "Calle 80", "modalidad": "presencial", "docente": "Docente sintético",
+  "cupoTotal": 18, "franja": "noche", "estado": "activo",
+  "bloques": [
+    {"dia": "MAR", "inicio": "18:15", "fin": "19:44", "edificio": "RGH", "salon": "A406LS27"},
+    {"dia": "JUE", "inicio": "18:15", "fin": "19:44", "edificio": "RGH", "salon": "A402LS25"}
+  ]
+}
+```
+
+- Días: `LUN MAR MIE JUE VIE SAB`. Horas `HH:MM` 24 h. Modalidad: `presencial | virtual | sincronica`.
+  Los NRC virtuales no tienen bloques y nunca generan cruce.
+- Franja por hora de inicio: mañana < 12:00, tarde < 18:00, noche ≥ 18:00.
+- Cruce: mismo día y `inicio_a < fin_b && inicio_b < fin_a`.
+- Periodo simulado: `2027-1`.
+
+### Redis — según informe, paso 6
+
+| Clave | Valor | Uso |
+| --- | --- | --- |
+| `cupos:{periodo}:{nrc}` | entero, cupos libres | descuento atómico (Lua) |
+| `ocupado:{estudianteId}` | hash/set de bloques tomados | filtro de cruces en ms |
+| `reserva:{estudianteId}:{nrc}` | reserva temporal, TTL 300 s | no perder el cupo mientras se confirma |
+
+### Data lake (MinIO)
+
+| Capa | Bucket | Contenido | Formato |
+| --- | --- | --- | --- |
+| Bronce | `bronze` | eventos crudos tal cual llegan, particionados `tipo=/fecha=` | JSON lines |
+| Plata | `silver` | intentos limpios y unidos con NRC/materia/franja, ids anonimizados | Parquet |
+| Oro | `gold` | `demanda_nrc`, `ocupacion_franja`, `combinaciones_nrc`, `auditoria_intentos` | Parquet |
+
+Validación de datos: los conteos bronce → plata → oro deben cuadrar.
+
+## Datos de referencia (`data/reference/`)
+
+Los insumos originales (informe, pensum, Excel de NRC, manual de marca) son del operador,
+viven solo en su máquina (`docs/`, ignorado por git) y **ningún agente los usa ni los
+versiona**. Todo lo necesario ya está extraído aquí:
+
+- `pensum.json`: Ingeniería de Sistemas, SNIES 90714, 64 materias, 163 créditos,
+  10 semestres; cada materia con `materiaId`, nombre, créditos, semestre, área y si es electiva.
+- `prerrequisitos.yaml`: prerrequisitos por línea de área (los insumos no los traían) y
+  créditos mínimos para Práctica profesional y Opción de grado.
+- `nrc_distribucion.json`: estadísticas de NRC reales (sin filas reales): rango y mediana
+  de cupos, proporción presencial/virtual/sincrónica, sesiones por NRC, franjas, bloques
+  horarios frecuentes, sedes/edificios y patrones de salón. Guía para generar NRC creíbles.
+
+No se generan ni versionan archivos Excel. El modelo canónico de NRC es el de Mongo.
+
+## Identidad visual (resumen del manual)
+
+- Claro: Azul UNIMINUTO `#003366` (primario), Dorado `#F2A900` (acento), Blanco, Gris `#555555`.
+- Oscuro: fondo `#0A0F1D`, superficie `#121A2D`, primario `#1E6BFF`, acento `#F5B014`,
+  texto `#E2E8F0` / `#94A3B8`.
+- Tipografía digital: Montserrat (titulares) + Open Sans (texto), vía `next/font`.
+- Tono: cercano, incluyente, ético, profesional e innovador.
+- Logo: ancho mínimo digital 120 px; área de reserva = ancho de la "U" de UNIMINUTO.
+  No deformar, no cambiar su tipografía, sin biseles/3D, no sobre fotos saturadas.
+  Claro: azul y dorado sobre blanco. Oscuro: isotipo dorado `#F5B014`, texto `#E2E8F0`.
+- Temas claro/oscuro con alternancia manual o automática (`prefers-color-scheme`).
+- Nota: el manual propone glassmorphism y botón con degradado en modo oscuro; el prompt
+  pide evitar la estética genérica de IA. `ui-designer` resuelve esta tensión en el brief
+  y la presenta al operador.
+
+## Estructura del repo
+
+```
+CLAUDE.md  Makefile  docker-compose.yml  .env.example
+data/reference/          pensum, prerrequisitos y distribución de NRC (versionados)
+data/seed/               generador sintético (Python); salidas en data/seed/out/ (ignorado)
+design/                  brief de diseño y decisiones visuales
+services/api/            FastAPI (app/, tests/)
+services/enroll-worker/  confirmación contra sistema académico simulado
+services/lake/           ingesta bronce y jobs plata/oro (DuckDB)
+web/                     Next.js App Router + Storybook + Playwright
+tests/load/              k6 y prueba de concurrencia
+```
+
+## Convenciones
+
+- Idioma: dominio y textos de UI en español (`estudiante`, `materia`, `cupos`);
+  palabras técnicas en inglés cuando son estándar (`handler`, `client`).
+- Python 3.12, gestionado con `uv`. Pydantic v2, tipado estricto (`mypy --strict`),
+  `ruff` para lint/format, `pytest` para pruebas.
+- TypeScript estricto, ESLint, Prettier. Next.js App Router, TanStack Query, Radix/shadcn
+  restilizado, Tailwind solo como utilidades sobre tokens CSS, Motion, Lucide.
+- API REST bajo `/api/v1`, OpenAPI automático en `/docs`. Errores con
+  `{ "codigo": "sin_cupo", "mensaje": "...", "alternativa": {...} }`.
+- Fechas en UTC ISO-8601; la UI muestra hora de Bogotá.
+- Commits pequeños por tarea, mensaje en español en imperativo.
+- No registrar datos personales en logs.
+
+## Comandos
+
+| Comando | Qué hace |
+| --- | --- |
+| `make up` | levanta todo (`docker compose up -d --wait`) |
+| `make down` | detiene y borra contenedores |
+| `make seed` | genera datos sintéticos y los carga en Mongo y Redis |
+| `make test` | pruebas unitarias e integración (api, worker, lake, web) |
+| `make load-test` | concurrencia (500 vs 10 cupos) + k6 por Docker |
+| `make e2e` | Playwright contra la app levantada |
+| `make storybook` | Storybook en el puerto 6006 |
+| `make lake` | corre bronce → plata → oro |
+
+k6 no está instalado localmente: se ejecuta con la imagen `grafana/k6`.
+
+## Historias de usuario (informe, paso 3)
+
+- **HU1** Ver solo lo que puedo inscribir: tras iniciar sesión, solo veo materias cuyos
+  prerrequisitos aprobé.
+- **HU2** Cupos y horarios reales: cada NRC muestra cupos, días y horas; si un NRC se
+  llena mientras lo miro, la pantalla se actualiza sin recargar.
+- **HU3** No ver cruces: con una clase martes y jueves 8:00 p. m. inscrita, no aparecen
+  NRC en esos bloques.
+- **HU4** Inscribir en un clic: con cupo, se reserva y confirma; si dos piden el último
+  cupo a la vez, solo uno lo obtiene y el otro recibe una alternativa.
+- **HU5** Planear la oferta: el coordinador ve la demanda histórica por NRC.
+
+RNF: oferta < 1 s, cero sobrecupos, cada intento trazado, uso desde celular sin manual,
+privacidad (Ley 1581 de 2012).

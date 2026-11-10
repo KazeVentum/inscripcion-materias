@@ -1,0 +1,25 @@
+# Entorno
+.env
+.venv/
+__pycache__/
+*.pyc
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Node / Next.js
+node_modules/
+.next/
+storybook-static/
+web/test-results/
+web/playwright-report/
+
+# Datos generados
+data/seed/out/
+
+# Sistema y Claude local
+.DS_Store
+.claude/settings.local.json
+
+# Insumos originales: solo locales, nunca se versionan
+docs/

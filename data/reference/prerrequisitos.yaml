@@ -1,0 +1,58 @@
+# Prerrequisitos del pensum Ingeniería de Sistemas (SNIES 90714).
+# Los archivos fuente no traen las flechas de prerrequisitos; se derivan por línea de
+# área de la ruta sugerida (cada curso exige el anterior de su línea) más algunos
+# ajustes de coherencia académica marcados con "ajuste".
+# Formato: materiaId: [prerrequisitos]. Cursos ausentes no tienen prerrequisitos.
+# Regla adicional: ISUMBG064 y ISUMBG074 exigen 70 % de créditos aprobados (114 de 163).
+
+programa: ISIS-2019
+creditos_minimos:
+  ISUMBG064: 114   # Práctica profesional
+  ISUMBG074: 114   # Opción de grado
+
+prerrequisitos:
+  # Programación / Ingeniería de software
+  ISUMBG023: [ISUMBG013]   # POO <- Programación básica
+  ISUMBG033: [ISUMBG023]   # Estructuras de datos <- POO
+  ISUMBG043: [ISUMBG033]   # Programación web <- Estructuras de datos
+  ISUMBG053: [ISUMBG043]   # Desarrollo basado en plataformas <- Programación web
+  ISUMBG083: [ISUMBG053, ISUMBG063]  # Arquitectura de software (ajuste: + Ing. software)
+  ISUMBG063: [ISUMBG033]   # Ingeniería de software <- Estructuras de datos
+  ISUMBG073: [ISUMBG033, MATE1110] # Diseño de algoritmos (ajuste: + Matemática discreta)
+
+  # Infraestructura / Organizaciones & TI
+  ISUMBG113: [ISUMBG103]   # Redes <- Sistemas operativos
+  ISUMBG123: [ISUMBG113]   # Interconectividad <- Redes
+  ISUMBG133: [ISUMBG123]   # Internet, servicios y servidores <- Interconectividad
+  ISUMBG143: [ISUMBG133]   # Seguridad de la información
+  ISUMBG153: [ISUMBG063]   # Calidad y gestión de proyectos (ajuste: <- Ing. software)
+  ISUMBG173: [ISUMBG163]   # Ingeniería económica <- Plan de negocios
+
+  # Datos
+  ISUMBG203: [ISUMBG193]   # Sistemas transaccionales <- Bases de datos
+  ISUMBG233: [ISUMBG203]   # Sistemas distribuidos
+  ISUMBG213: [ISUMBG203]   # Arquitectura de datos (ajuste)
+  ISUMBG223: [ISUMBG213]   # Bases de datos masivas
+  ISUMBG243: [ISUMBG223]   # Minería de datos
+  ISUMBG253: [ISUMBG233, ISUMBG133] # Gestión de infraestructura (ajuste)
+
+  # Ciencias básicas
+  MATE1061: [MATE1020]     # Cálculo diferencial <- Precálculo
+  MATE1051: [MATE1061]     # Cálculo integral
+  MATE1130: [MATE1051]     # Ecuaciones diferenciales
+  CBASBG031: [MATE1130]    # Métodos numéricos
+  MATE1036: [ISUMBG011]    # Álgebra lineal <- Lógica matemática
+  MATE1110: [ISUMBG011]    # Matemática discreta <- Lógica matemática
+  FISI1010: [MATE1061]     # Física mecánica (ajuste)
+  FISI1040: [FISI1010, MATE1051] # Física eléctrica
+  ESTA1080: [MATE1051]     # Probabilidad y estadística (ajuste)
+
+  # Investigación
+  ISUMBG031: [IAGR1060]    # Seminario de investigación <- Metodología
+
+  # General y Minuto de Dios
+  INGL1020: [INGL1010]
+  INGL1030: [INGL1020]
+  LENG1020: [LENG1010]
+  FHUM1020: [FHUM1010]
+  PRAC1010: [PRAC1020]     # Práctica en responsabilidad social <- Desarrollo social

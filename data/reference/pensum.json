@@ -1,0 +1,522 @@
+{
+  "programaId": "ISIS-2019",
+  "programa": "Ingeniería de Sistemas",
+  "snies": 90714,
+  "modalidad": "presencial",
+  "semestres": 10,
+  "creditosTotales": 163,
+  "materias": [
+    {
+      "materiaId": "FHUM1010",
+      "nombre": "Proyecto de Vida",
+      "creditos": 2,
+      "semestre": 1,
+      "area": "Formación humana",
+      "electiva": false
+    },
+    {
+      "materiaId": "INFO1010",
+      "nombre": "Gestión Básica de la Información",
+      "creditos": 3,
+      "semestre": 1,
+      "area": "General",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG011",
+      "nombre": "Lógica Matemática",
+      "creditos": 2,
+      "semestre": 1,
+      "area": "Ciencias básicas específicas",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG013",
+      "nombre": "Programación Básica",
+      "creditos": 2,
+      "semestre": 1,
+      "area": "Ingeniería de software",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG021",
+      "nombre": "Introducción a la Ingeniería",
+      "creditos": 1,
+      "semestre": 1,
+      "area": "Investigación",
+      "electiva": false
+    },
+    {
+      "materiaId": "LENG1010",
+      "nombre": "Comunicación Escrita y Procesos Lectores I",
+      "creditos": 2,
+      "semestre": 1,
+      "area": "General",
+      "electiva": false
+    },
+    {
+      "materiaId": "MATE1020",
+      "nombre": "Precálculo",
+      "creditos": 3,
+      "semestre": 1,
+      "area": "Ciencias básicas comunes",
+      "electiva": false
+    },
+    {
+      "materiaId": "FHUM1020",
+      "nombre": "Cátedra Minuto de Dios",
+      "creditos": 2,
+      "semestre": 2,
+      "area": "Formación humana",
+      "electiva": false
+    },
+    {
+      "materiaId": "IAGR1060",
+      "nombre": "Metodología de la investigación",
+      "creditos": 2,
+      "semestre": 2,
+      "area": "Investigación",
+      "electiva": false
+    },
+    {
+      "materiaId": "INGL1010",
+      "nombre": "Inglés I",
+      "creditos": 3,
+      "semestre": 2,
+      "area": "General",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG023",
+      "nombre": "Programación Orientada a Objetos",
+      "creditos": 3,
+      "semestre": 2,
+      "area": "Ingeniería de software",
+      "electiva": false
+    },
+    {
+      "materiaId": "LENG1020",
+      "nombre": "Comunicación Escrita y Procesos Lectores II",
+      "creditos": 2,
+      "semestre": 2,
+      "area": "General",
+      "electiva": false
+    },
+    {
+      "materiaId": "MATE1036",
+      "nombre": "Algebra Lineal",
+      "creditos": 2,
+      "semestre": 2,
+      "area": "Ciencias básicas específicas",
+      "electiva": false
+    },
+    {
+      "materiaId": "MATE1061",
+      "nombre": "Cálculo Diferencial",
+      "creditos": 3,
+      "semestre": 2,
+      "area": "Ciencias básicas comunes",
+      "electiva": false
+    },
+    {
+      "materiaId": "ADMI1060",
+      "nombre": "Empredimiento",
+      "creditos": 2,
+      "semestre": 3,
+      "area": "Emprendimiento",
+      "electiva": false
+    },
+    {
+      "materiaId": "FISI1010",
+      "nombre": "Física Mecánica",
+      "creditos": 3,
+      "semestre": 3,
+      "area": "Ciencias básicas comunes",
+      "electiva": false
+    },
+    {
+      "materiaId": "INGL1020",
+      "nombre": "Inglés II",
+      "creditos": 3,
+      "semestre": 3,
+      "area": "General",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG033",
+      "nombre": "Estructuras de Datos",
+      "creditos": 3,
+      "semestre": 3,
+      "area": "Ingeniería de software",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG103",
+      "nombre": "Sistemas Operativos",
+      "creditos": 3,
+      "semestre": 3,
+      "area": "Organizaciones y TI",
+      "electiva": false
+    },
+    {
+      "materiaId": "MATE1051",
+      "nombre": "Cálculo Integral",
+      "creditos": 3,
+      "semestre": 3,
+      "area": "Ciencias básicas comunes",
+      "electiva": false
+    },
+    {
+      "materiaId": "FISI1040",
+      "nombre": "Física Eléctrica",
+      "creditos": 3,
+      "semestre": 4,
+      "area": "Ciencias básicas comunes",
+      "electiva": false
+    },
+    {
+      "materiaId": "INGL1030",
+      "nombre": "Inglés III",
+      "creditos": 3,
+      "semestre": 4,
+      "area": "General",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG014",
+      "nombre": "Electiva CPC",
+      "creditos": 2,
+      "semestre": 4,
+      "area": "Profesional complementario",
+      "electiva": true
+    },
+    {
+      "materiaId": "ISUMBG113",
+      "nombre": "Redes de Computadores",
+      "creditos": 3,
+      "semestre": 4,
+      "area": "Organizaciones y TI",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG193",
+      "nombre": "Bases de Datos",
+      "creditos": 3,
+      "semestre": 4,
+      "area": "Datos",
+      "electiva": false
+    },
+    {
+      "materiaId": "PRAC1020",
+      "nombre": "Desarrollo Social Contemporaneo",
+      "creditos": 2,
+      "semestre": 4,
+      "area": "Responsabilidad social",
+      "electiva": false
+    },
+    {
+      "materiaId": "ESTA1080",
+      "nombre": "Probabilidad y Estadística",
+      "creditos": 2,
+      "semestre": 5,
+      "area": "Ciencias básicas comunes",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG043",
+      "nombre": "Programación Web",
+      "creditos": 3,
+      "semestre": 5,
+      "area": "Ingeniería de software",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG063",
+      "nombre": "Ingeniería de Software",
+      "creditos": 3,
+      "semestre": 5,
+      "area": "Ingeniería de software",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG123",
+      "nombre": "Interconectividad",
+      "creditos": 3,
+      "semestre": 5,
+      "area": "Organizaciones y TI",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG203",
+      "nombre": "Sistemas Transaccionales",
+      "creditos": 3,
+      "semestre": 5,
+      "area": "Datos",
+      "electiva": false
+    },
+    {
+      "materiaId": "PRAC1010",
+      "nombre": "Práctica en Responsabilidad Social",
+      "creditos": 3,
+      "semestre": 5,
+      "area": "Responsabilidad social",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG042",
+      "nombre": "Electiva CMD Ingenieros sin Fronteras",
+      "creditos": 3,
+      "semestre": 6,
+      "area": "Formación humana",
+      "electiva": true
+    },
+    {
+      "materiaId": "ISUMBG053",
+      "nombre": "Desarrollo Basado en Plataformas",
+      "creditos": 2,
+      "semestre": 6,
+      "area": "Ingeniería de software",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG054",
+      "nombre": "Electiva CPC",
+      "creditos": 2,
+      "semestre": 6,
+      "area": "Profesional complementario",
+      "electiva": true
+    },
+    {
+      "materiaId": "ISUMBG073",
+      "nombre": "Diseño de Algoritmos",
+      "creditos": 2,
+      "semestre": 6,
+      "area": "Ingeniería de software",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG213",
+      "nombre": "Arquitectura de Datos",
+      "creditos": 3,
+      "semestre": 6,
+      "area": "Datos",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG233",
+      "nombre": "Sistemas Distribuidos",
+      "creditos": 3,
+      "semestre": 6,
+      "area": "Datos",
+      "electiva": false
+    },
+    {
+      "materiaId": "MATE1130",
+      "nombre": "Ecuaciones Diferenciales",
+      "creditos": 2,
+      "semestre": 6,
+      "area": "Ciencias básicas específicas",
+      "electiva": false
+    },
+    {
+      "materiaId": "ETIC190",
+      "nombre": "Ética profesional",
+      "creditos": 2,
+      "semestre": 7,
+      "area": "Formación humana",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG012",
+      "nombre": "Electiva CMD",
+      "creditos": 2,
+      "semestre": 7,
+      "area": "Responsabilidad social",
+      "electiva": true
+    },
+    {
+      "materiaId": "ISUMBG083",
+      "nombre": "Arquitectura de Software",
+      "creditos": 3,
+      "semestre": 7,
+      "area": "Ingeniería de software",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG133",
+      "nombre": "Estructura de Internet, Servicios y Servidores",
+      "creditos": 3,
+      "semestre": 7,
+      "area": "Organizaciones y TI",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG163",
+      "nombre": "Plan de Negocios",
+      "creditos": 2,
+      "semestre": 7,
+      "area": "Organizaciones y TI",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG223",
+      "nombre": "Bases de Datos Masivas",
+      "creditos": 3,
+      "semestre": 7,
+      "area": "Datos",
+      "electiva": false
+    },
+    {
+      "materiaId": "MATE1110",
+      "nombre": "Matemática Discreta",
+      "creditos": 2,
+      "semestre": 7,
+      "area": "Ciencias básicas específicas",
+      "electiva": false
+    },
+    {
+      "materiaId": "CBASBG031",
+      "nombre": "Métodos Numéricos",
+      "creditos": 2,
+      "semestre": 8,
+      "area": "Ciencias básicas específicas",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG022",
+      "nombre": "Electiva CMD",
+      "creditos": 2,
+      "semestre": 8,
+      "area": "Responsabilidad social",
+      "electiva": true
+    },
+    {
+      "materiaId": "ISUMBG044",
+      "nombre": "Electiva CPC",
+      "creditos": 3,
+      "semestre": 8,
+      "area": "Profesional complementario",
+      "electiva": true
+    },
+    {
+      "materiaId": "ISUMBG093",
+      "nombre": "Electiva CP",
+      "creditos": 2,
+      "semestre": 8,
+      "area": "Ingeniería de software",
+      "electiva": true
+    },
+    {
+      "materiaId": "ISUMBG143",
+      "nombre": "Seguridad de la Información",
+      "creditos": 2,
+      "semestre": 8,
+      "area": "Organizaciones y TI",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG173",
+      "nombre": "Ingeniería Económica",
+      "creditos": 2,
+      "semestre": 8,
+      "area": "Organizaciones y TI",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG243",
+      "nombre": "Minería de Datos",
+      "creditos": 3,
+      "semestre": 8,
+      "area": "Datos",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG024",
+      "nombre": "Electiva CPC",
+      "creditos": 3,
+      "semestre": 9,
+      "area": "Profesional complementario",
+      "electiva": true
+    },
+    {
+      "materiaId": "ISUMBG031",
+      "nombre": "Seminario de Investigación en Ingeniería",
+      "creditos": 1,
+      "semestre": 9,
+      "area": "Investigación",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG032",
+      "nombre": "Electiva CMD",
+      "creditos": 2,
+      "semestre": 9,
+      "area": "Responsabilidad social",
+      "electiva": true
+    },
+    {
+      "materiaId": "ISUMBG064",
+      "nombre": "Práctica Profesional",
+      "creditos": 6,
+      "semestre": 9,
+      "area": "Profesional complementario",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG153",
+      "nombre": "Calidad y Gestión de Proyectos Informáticos",
+      "creditos": 2,
+      "semestre": 9,
+      "area": "Organizaciones y TI",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG253",
+      "nombre": "Gestión de Infraestructura",
+      "creditos": 3,
+      "semestre": 9,
+      "area": "Datos",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG034",
+      "nombre": "Electiva CPC",
+      "creditos": 3,
+      "semestre": 10,
+      "area": "Profesional complementario",
+      "electiva": true
+    },
+    {
+      "materiaId": "ISUMBG052",
+      "nombre": "Electiva CMD Ingeniería y Desarrollo Regional",
+      "creditos": 2,
+      "semestre": 10,
+      "area": "Formación humana",
+      "electiva": true
+    },
+    {
+      "materiaId": "ISUMBG074",
+      "nombre": "Opción de Grado",
+      "creditos": 5,
+      "semestre": 10,
+      "area": "Profesional complementario",
+      "electiva": false
+    },
+    {
+      "materiaId": "ISUMBG183",
+      "nombre": "Electiva CP",
+      "creditos": 2,
+      "semestre": 10,
+      "area": "Organizaciones y TI",
+      "electiva": true
+    },
+    {
+      "materiaId": "ISUMBG263",
+      "nombre": "Electiva CP",
+      "creditos": 2,
+      "semestre": 10,
+      "area": "Datos",
+      "electiva": true
+    }
+  ]
+}
