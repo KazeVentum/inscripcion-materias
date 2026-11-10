@@ -72,6 +72,10 @@ PERFILES_DEMO: dict[str, dict[str, Any]] = {
         "semestre": 7, "rezago": True, "inscripciones": 4, "antiguas": True,
         "perfil": "Semestre 7 con rezago: materias pendientes de semestres anteriores",
     },
+    "est-000006": {
+        "semestre": 3, "rezago": False, "inscripciones": 3, "jornada": "tarde",
+        "perfil": "Semestre 3 de jornada tarde: solo ve NRC entre 12:00 y 18:00",
+    },
 }
 
 REFERENCE_DIR = rules.REFERENCE_DIR
@@ -107,6 +111,7 @@ class _Estudiante:
     semestre: int
     max_insc: int
     demo: bool
+    jornada: str = "noche"
     aprobadas: set[str] = field(default_factory=set)
     creditos: int = 0
     matriculadas: set[str] = field(default_factory=set)
@@ -260,17 +265,62 @@ def _bloques(
     edificio: str,
     patrones: list[str],
     opciones_franja: dict[str, tuple[list[tuple[str, str]], list[int]]],
+    jornada: str | None = None,
 ) -> list[dict[str, str]]:
     if modalidad in rules.MODALIDADES_SIN_BLOQUES:
         return []
     k = rng.choices((1, 2, 4), weights=(16, 124, 2))[0]
     salida: list[dict[str, str]] = []
     horas, pesos = opciones_franja[franja]
+    if jornada is not None:
+        # solo horas dentro de la ventana de la jornada (p. ej. la tarde excluye 16:45–18:14)
+        pares = [
+            (h, p) for h, p in zip(horas, pesos, strict=True)
+            if rules.bloque_en_jornada({"inicio": h[0], "fin": h[1]}, jornada)
+        ]
+        horas, pesos = [h for h, _ in pares], [p for _, p in pares]
     for dia in sorted(_dias(rng, k, franja), key=rules.DIAS.index):
         inicio, fin = rng.choices(horas, weights=pesos)[0]
         bloque = Bloque(dia=dia, inicio=inicio, fin=fin, edificio=edificio, salon=_salon(rng, patrones))
         salida.append(bloque.model_dump())
     return salida
+
+
+def _garantizar_jornadas(
+    rng: random.Random,
+    mid: str,
+    nrcs: list[str],
+    nrc_docs: list[dict[str, Any]],
+    meta: dict[str, dict[str, Any]],
+    edificios: dict[str, list[str]],
+    patrones: list[str],
+    opciones_franja: dict[str, tuple[list[tuple[str, str]], list[int]]],
+    protegido: str | None,
+) -> None:
+    """Cada materia tiene al menos un NRC en la ventana noche y otro en la ventana tarde.
+
+    Un NRC virtual (sin bloques) ya cumple ambas. Si falta una ventana se reescribe el horario
+    de un NRC que no sea el único de la otra ventana.
+    """
+    docs = {d["nrc"]: d for d in nrc_docs if d["materiaId"] == mid}
+    for jornada in rules.JORNADAS:
+        if any(rules.en_jornada(meta[n]["bloques"], jornada) for n in nrcs):
+            continue
+        otra = next(j for j in rules.JORNADAS if j != jornada)
+        unicos = {n for n in nrcs if rules.en_jornada(meta[n]["bloques"], otra)}
+        solos = unicos if len(unicos) == 1 else set()
+        candidatos = [n for n in nrcs if n != protegido and n not in solos]
+        sin_ventana = [n for n in candidatos if n not in unicos]
+        elegido = (sin_ventana or candidatos)[-1]
+        doc = docs[elegido]
+        if doc["modalidad"] == "virtual":
+            doc["modalidad"] = "presencial"
+        franja = "noche" if jornada == "noche" else "tarde"
+        edificio = rng.choice(edificios[doc["sede"]])
+        bloques = _bloques(rng, doc["modalidad"], franja, edificio, patrones, opciones_franja, jornada)
+        doc["bloques"] = bloques
+        doc["franja"] = franja
+        meta[elegido]["bloques"] = bloques
 
 
 def _aprobar(
@@ -324,6 +374,8 @@ def _cabe(e: _Estudiante, nrc: str, ctx: _Ctx) -> bool:
     """Hay cupo físico y no hay cruce con las otras inscripciones del estudiante."""
     meta = ctx.meta[nrc]
     if len(meta["inscritos"]) >= meta["cupo"]:
+        return False
+    if not rules.en_jornada(meta["bloques"], e.jornada):
         return False
     return not rules.hay_cruce(e.bloques, meta["bloques"])
 
@@ -485,6 +537,11 @@ def build(
             }
             nrc_por_materia[mid].append(nrc)
 
+        _garantizar_jornadas(
+            rng, mid, nrc_por_materia[mid], nrc_docs, meta, edificios, patrones, opciones_franja,
+            protegido=nrc_por_materia[mid][0] if mid == DEMO_MATERIA else None,
+        )
+
     # Estudiantes ---------------------------------------------------------------------
     estudiantes: list[_Estudiante] = []
     est_docs: list[dict[str, Any]] = []
@@ -497,8 +554,10 @@ def build(
         sede = rng.choices(list(PESOS_SEDE), weights=list(PESOS_SEDE.values()))[0]
         primer, ap1, ap2 = _persona(fake)
         correo = _correo(primer, ap1, usados_correo)
+        jornada = "noche"
         if plan is not None:
             semestre, rezago = plan["semestre"], plan["rezago"]
+            jornada = plan.get("jornada", "noche")
         aprobadas = _aprobar(rng, semestre, rezago, [x for x in materias_orden if x not in ref.creditos_minimos],
                              materias, ref.prerrequisitos, ref.creditos_minimos)
         if est_id == "est-000004":
@@ -508,7 +567,7 @@ def build(
             }
         creditos = sum(materias[a]["creditos"] for a in aprobadas)
         e = _Estudiante(id=est_id, semestre=semestre, max_insc=max_insc, demo=plan is not None,
-                        aprobadas=aprobadas, creditos=creditos)
+                        jornada=jornada, aprobadas=aprobadas, creditos=creditos)
         estudiantes.append(e)
         doc: dict[str, Any] = {
             "_id": est_id,
@@ -518,6 +577,7 @@ def build(
             "programa": PROGRAMA_ID,
             "sede": sede,
             "semestre": semestre,
+            "jornada": jornada,
             "materiasAprobadas": [mid for mid in materias_orden if mid in aprobadas],
             "creditosAprobados": creditos,
             "demo": e.demo,

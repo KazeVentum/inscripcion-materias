@@ -17,6 +17,24 @@ const config: NextConfig = {
     // El proxy corta a los 30 s por defecto; el stream de cupos vive hasta que vence la sesión.
     proxyTimeout: 2 * 60 * 60 * 1000,
   },
+  async headers() {
+    // La CSP (con nonce) la pone proxy.ts; aquí van las cabeceras estáticas.
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+          },
+          // respaldo de frame-ancestors para navegadores viejos
+          { key: "X-Frame-Options", value: "DENY" },
+        ],
+      },
+    ];
+  },
   async rewrites() {
     return [{ source: "/api/v1/:path*", destination: `${API_INTERNAL_URL}/api/v1/:path*` }];
   },

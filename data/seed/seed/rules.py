@@ -40,6 +40,21 @@ def franja_de(inicio: str) -> str:
     return "noche"
 
 
+# Jornada del estudiante: ventana en minutos [inicio, fin] que deben respetar TODOS los bloques.
+JORNADAS: tuple[str, ...] = ("noche", "tarde")
+VENTANAS: dict[str, tuple[int, int]] = {"noche": (18 * 60, 22 * 60), "tarde": (12 * 60, 18 * 60)}
+
+
+def bloque_en_jornada(bloque: Mapping[str, str], jornada: str) -> bool:
+    desde, hasta = VENTANAS[jornada]
+    return minutos(bloque["inicio"]) >= desde and minutos(bloque["fin"]) <= hasta
+
+
+def en_jornada(bloques: Iterable[Mapping[str, str]], jornada: str) -> bool:
+    """True si todos los bloques caen en la ventana (sin bloques = virtual: cualquier jornada)."""
+    return all(bloque_en_jornada(b, jornada) for b in bloques)
+
+
 def se_cruzan(a: Mapping[str, str], b: Mapping[str, str]) -> bool:
     """True si dos bloques ocupan el mismo día con horas traslapadas."""
     return (
