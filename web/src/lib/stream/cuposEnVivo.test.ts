@@ -202,4 +202,21 @@ describe("StreamCupos", () => {
     vieja.emitir("cupo", '{"nrc":"1","libres":1}');
     expect(onCupo).not.toHaveBeenCalled();
   });
+
+  it("watchdog: sin eventos en 35 s cierra y reconecta con ticket nuevo; un ping lo reinicia", async () => {
+    const { stream, pedirTicket, onEstado } = armar();
+    stream.iniciar();
+    await vaciar();
+    const f = FuenteFalsa.todas[0]!;
+    f.abrir();
+    await vi.advanceTimersByTimeAsync(30_000);
+    f.emitir("ping", "{}");
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(f.cerrada).toBe(false); // el ping reinició la cuenta
+    await vi.advanceTimersByTimeAsync(5_001);
+    expect(f.cerrada).toBe(true);
+    expect(ultimoEstado(onEstado)).toBe("reconectando");
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(pedirTicket).toHaveBeenCalledTimes(2);
+  });
 });

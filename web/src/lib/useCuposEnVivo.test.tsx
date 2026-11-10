@@ -109,4 +109,16 @@ describe("useCuposEnVivo", () => {
     unmount();
     expect(f.cerrada).toBe(true);
   });
+
+  it("cada 60 s con la pestaña visible vuelve a pedir las listas de NRC", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    try {
+      const { qc } = montar();
+      const invalidar = vi.spyOn(qc, "invalidateQueries");
+      vi.advanceTimersByTime(60_000);
+      expect(invalidar).toHaveBeenCalledWith({ queryKey: claves.nrcTodos });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

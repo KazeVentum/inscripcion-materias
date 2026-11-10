@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, api } from "@/lib/api/cliente";
 import { claves, crearQueryClient } from "@/lib/api/consultas";
 import type { NrcOut } from "@/lib/tipos";
+import { TEXTO_SIN_CONFIRMAR } from "@/lib/inscribir";
 import { useInscripcion } from "./useInscripcion";
 
 const avisos = { inscrita: vi.fn(), info: vi.fn(), error: vi.fn() };
@@ -76,6 +77,25 @@ describe("useInscripcion", () => {
       },
     );
     expect(result.current.fases).toEqual({});
+  });
+
+  it("sin confirmación a tiempo: avisa y refresca en vez de callar", async () => {
+    vi.spyOn(api, "inscribir").mockResolvedValue({
+      estado: "reservada",
+      nrc: "80852",
+      materiaId: "ISUMBG103",
+      cuposLibres: 0,
+      vencimiento: "2026-11-10T15:05:00Z",
+    });
+    vi.spyOn(api, "estadoInscripcion").mockResolvedValue({ nrc: "80852", estado: "cancelada" });
+    const { result, qc } = montar();
+    const invalidar = vi.spyOn(qc, "invalidateQueries");
+    act(() => void result.current.inscribir(nrc));
+    await waitFor(() => expect(avisos.error).toHaveBeenCalledWith(TEXTO_SIN_CONFIRMAR), {
+      timeout: 4000,
+    });
+    expect(result.current.fases).toEqual({});
+    expect(invalidar).toHaveBeenCalledWith({ queryKey: claves.horarioTodos });
   });
 
   it("rechazada: avisa que se liberó el cupo", async () => {

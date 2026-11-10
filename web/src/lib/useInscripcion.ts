@@ -5,8 +5,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAvisos } from "@/components/pantallas/Avisos";
 import { ApiError, api } from "@/lib/api/cliente";
 import { aplicarCupo, claves, leerHorario } from "@/lib/api/consultas";
-import { esperarConfirmacion, mensajeIntentoFallido, TEXTO_RECHAZADA } from "@/lib/inscribir";
-import type { HorarioOut, NrcOut } from "@/lib/tipos";
+import {
+  esperarConfirmacion,
+  mensajeIntentoFallido,
+  TEXTO_RECHAZADA,
+  TEXTO_SIN_CONFIRMAR,
+} from "@/lib/inscribir";
+import type { NrcOut } from "@/lib/tipos";
 
 function sinClave<V>(mapa: Record<string, V>, clave: string): Record<string, V> {
   return Object.fromEntries(Object.entries(mapa).filter(([k]) => k !== clave));
@@ -99,6 +104,9 @@ export function useInscripcion() {
           avisos.inscrita(nrc.titulo, nrc.nrc);
         } else if (final?.estado === "rechazada") {
           avisos.error(TEXTO_RECHAZADA(nrc.nrc));
+        } else {
+          // sin respuesta a tiempo (null) o cancelada por otra vía: nunca en silencio
+          avisos.error(TEXTO_SIN_CONFIRMAR);
         }
         refrescar();
       } catch (err) {

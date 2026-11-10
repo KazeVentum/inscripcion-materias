@@ -26,6 +26,8 @@ export interface OpcionesStream {
   /** Intentos fallidos seguidos tras los que se declara "sin conexión". */
   intentosParaSinConexion?: number;
   ahora?: () => number;
+  /** Sin ningún evento (cupo o ping) en este tiempo se da la conexión por muerta. */
+  watchdogMs?: number;
 }
 
 export function esperaExponencial(intento: number): number {
@@ -52,6 +54,7 @@ export function parsearCupo(datos: string): EventoCupo | null {
 export class StreamCupos {
   private fuente: FuenteEventos | null = null;
   private temporizador: ReturnType<typeof setTimeout> | null = null;
+  private perro: ReturnType<typeof setTimeout> | null = null;
   private intentos = 0;
   private activo = false;
   /** Hubo conexión previa o intentos fallidos: al volver, la caché puede estar vieja. */
@@ -60,7 +63,7 @@ export class StreamCupos {
   private estado: EstadoConexion = "reconectando";
   private generacion = 0;
   private readonly o: Required<
-    Pick<OpcionesStream, "url" | "espera" | "intentosParaSinConexion" | "ahora">
+    Pick<OpcionesStream, "url" | "espera" | "intentosParaSinConexion" | "ahora" | "watchdogMs">
   > &
     OpcionesStream;
 
@@ -70,6 +73,7 @@ export class StreamCupos {
       espera: esperaExponencial,
       intentosParaSinConexion: 2,
       ahora: () => Date.now(),
+      watchdogMs: 35_000,
       ...opciones,
     };
   }
@@ -107,8 +111,24 @@ export class StreamCupos {
   private limpiar(): void {
     if (this.temporizador !== null) clearTimeout(this.temporizador);
     this.temporizador = null;
+    if (this.perro !== null) clearTimeout(this.perro);
+    this.perro = null;
     this.fuente?.close();
     this.fuente = null;
+  }
+
+  /**
+   * Watchdog: el servidor manda `event: ping` cada 15 s. Si pasan `watchdogMs` sin nada, la
+   * conexión murió en silencio (proxy, red móvil): se cierra y se reconecta con ticket nuevo.
+   */
+  private armarPerro(gen: number): void {
+    if (this.perro !== null) clearTimeout(this.perro);
+    this.perro = setTimeout(() => {
+      if (gen !== this.generacion || !this.activo) return;
+      this.limpiar();
+      this.perdida();
+      this.fallo();
+    }, this.o.watchdogMs);
   }
 
   private cambiar(e: EstadoConexion): void {
@@ -141,8 +161,13 @@ export class StreamCupos {
     const crear = this.o.crearFuente ?? ((u: string) => new EventSource(u) as FuenteEventos);
     const fuente = crear(`${this.o.url}?ticket=${encodeURIComponent(ticket)}`);
     this.fuente = fuente;
+    this.armarPerro(gen);
+    fuente.addEventListener("ping", () => {
+      if (gen === this.generacion) this.armarPerro(gen);
+    });
     fuente.onopen = () => {
       if (gen !== this.generacion) return;
+      this.armarPerro(gen);
       const recuperada = this.necesitaResync;
       this.necesitaResync = false;
       this.intentos = 0;
@@ -152,6 +177,7 @@ export class StreamCupos {
     };
     fuente.addEventListener("cupo", (m) => {
       if (gen !== this.generacion) return;
+      this.armarPerro(gen);
       const cupo = parsearCupo(m.data);
       if (!cupo) return;
       this.ultima = this.o.ahora();

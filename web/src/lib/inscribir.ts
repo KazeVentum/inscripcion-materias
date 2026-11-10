@@ -108,5 +108,8 @@ export function mensajeCruce(
   return `Se cruza con ${otro.titulo} (NRC ${otro.nrc}).`;
 }
 
+export const TEXTO_SIN_CONFIRMAR =
+  "No pudimos confirmar tu inscripción a tiempo; revisa Mi horario.";
+
 export const TEXTO_RECHAZADA = (nrc: string) =>
   `El sistema académico no confirmó ${nrc}. Liberamos el cupo; puedes intentarlo de nuevo.`;

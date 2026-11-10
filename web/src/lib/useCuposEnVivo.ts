@@ -52,11 +52,19 @@ export function useCuposEnVivo(
     const alPerderRed = () => stream.marcarSinRed();
     window.addEventListener("online", alVolverRed);
     window.addEventListener("offline", alPerderRed);
+    // Pub/Sub descarta eventos si la cola de un cliente se llena: con la pestaña visible,
+    // cada 60 s se piden de nuevo los cupos reales.
+    const repaso = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void qc.invalidateQueries({ queryKey: claves.nrcTodos });
+      }
+    }, 60_000);
     stream.iniciar();
     if (!navigator.onLine) stream.marcarSinRed();
     return () => {
       window.removeEventListener("online", alVolverRed);
       window.removeEventListener("offline", alPerderRed);
+      window.clearInterval(repaso);
       stream.detener();
     };
     // `inyectar` solo lo usan las pruebas y no cambia entre renders.
