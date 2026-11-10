@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brief de inscripción</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&family=Open+Sans:wdth,wght@75..100,400..700&display=swap" rel="stylesheet">
+<style>
+/* ---------- Tokens: claro ---------- */
+:root, .t-light {
+  --bg:#F3F5F8; --surface:#FFFFFF; --surface-2:#E8EDF3;
+  --text:#14233A; --text-2:#555555; --text-3:#626D7B;
+  --border:#C9D2DD; --border-strong:#8A96A6;
+  --primary:#003366; --on-primary:#FFFFFF; --primary-ink:#003366; --primary-soft:#E3EBF4;
+  --accent:#F2A900; --on-accent:#14233A; --accent-ink:#8A5A00; --accent-soft:#FDF1D4;
+  --success:#1C7A4A; --success-soft:#E3F3EA;
+  --warning:#9A5A00;
+  --danger:#B3261E; --danger-soft:#FBE9E7;
+  --info:#1F5FA8; --focus:#003366;
+  --seat-free:#003366; --seat-taken:#C9D2DD;
+  --block-enrolled-bg:#003366; --block-enrolled-fg:#FFFFFF; --block-enrolled-edge:#003366;
+  --shadow-1:0 1px 2px rgb(0 51 102 / .08);
+  --shadow-2:0 10px 28px -6px rgb(0 51 102 / .22), 0 2px 4px rgb(0 51 102 / .08);
+  --edge:inset 0 0 0 0 transparent;
+  --sheet-bg:rgb(255 255 255 / .86);
+  color-scheme: light;
+}
+/* ---------- Tokens: oscuro ---------- */
+.t-dark {
+  --bg:#0A0F1D; --surface:#121A2D; --surface-2:#1A2440;
+  --text:#E2E8F0; --text-2:#94A3B8; --text-3:#7D8BA1;
+  --border:#26324D; --border-strong:#5B6A8A;
+  --primary:#1E6BFF; --on-primary:#FFFFFF; --primary-ink:#6EA8FF; --primary-soft:#15264A;
+  --accent:#F5B014; --on-accent:#0A0F1D; --accent-ink:#F5B014; --accent-soft:#2A2414;
+  --success:#3DBE7E; --success-soft:#0F2A1E;
+  --warning:#F5B014;
+  --danger:#FF7A6E; --danger-soft:#33191C;
+  --info:#6EA8FF; --focus:#F5B014;
+  --seat-free:#6EA8FF; --seat-taken:#2E3B58;
+  --block-enrolled-bg:#15264A; --block-enrolled-fg:#E2E8F0; --block-enrolled-edge:#1E6BFF;
+  --shadow-1:none; --shadow-2:none;
+  --edge:inset 0 1px 0 rgb(255 255 255 / .05);
+  --sheet-bg:rgb(18 26 45 / .86);
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:#0A0F1D; --surface:#121A2D; --surface-2:#1A2440;
+    --text:#E2E8F0; --text-2:#94A3B8; --text-3:#7D8BA1;
+    --border:#26324D; --border-strong:#5B6A8A;
+    --primary:#1E6BFF; --on-primary:#FFFFFF; --primary-ink:#6EA8FF; --primary-soft:#15264A;
+    --accent:#F5B014; --on-accent:#0A0F1D; --accent-ink:#F5B014; --accent-soft:#2A2414;
+    --success:#3DBE7E; --success-soft:#0F2A1E; --warning:#F5B014;
+    --danger:#FF7A6E; --danger-soft:#33191C; --info:#6EA8FF; --focus:#F5B014;
+    --seat-free:#6EA8FF; --seat-taken:#2E3B58;
+    --shadow-1:none; --shadow-2:none; --edge:inset 0 1px 0 rgb(255 255 255 / .05);
+    --block-enrolled-bg:#15264A; --block-enrolled-fg:#E2E8F0; --block-enrolled-edge:#1E6BFF; --sheet-bg:rgb(18 26 45 / .86);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:#0A0F1D; --surface:#121A2D; --surface-2:#1A2440;
+  --text:#E2E8F0; --text-2:#94A3B8; --text-3:#7D8BA1;
+  --border:#26324D; --border-strong:#5B6A8A;
+  --primary:#1E6BFF; --on-primary:#FFFFFF; --primary-ink:#6EA8FF; --primary-soft:#15264A;
+  --accent:#F5B014; --on-accent:#0A0F1D; --accent-ink:#F5B014; --accent-soft:#2A2414;
+  --success:#3DBE7E; --success-soft:#0F2A1E; --warning:#F5B014;
+  --danger:#FF7A6E; --danger-soft:#33191C; --info:#6EA8FF; --focus:#F5B014;
+  --seat-free:#6EA8FF; --seat-taken:#2E3B58;
+  --shadow-1:none; --shadow-2:none; --edge:inset 0 1px 0 rgb(255 255 255 / .05);
+  --block-enrolled-bg:#15264A; --block-enrolled-fg:#E2E8F0; --block-enrolled-edge:#1E6BFF; --sheet-bg:rgb(18 26 45 / .86);
+  color-scheme: dark;
+}
+:root {
+  --font-head:"Montserrat", system-ui, sans-serif;
+  --font-body:"Open Sans", system-ui, sans-serif;
+  --r-seat:2px; --r-chip:6px; --r-control:10px; --r-card:14px; --r-sheet:20px;
+  --dur-press:100ms; --dur-fast:160ms; --dur-base:240ms; --dur-count:420ms;
+  --ease-out:cubic-bezier(.2,.8,.2,1); --ease-in-out:cubic-bezier(.4,0,.2,1);
+}
+
+/* ---------- Base ---------- */
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0}
+body{overflow-x:hidden;background:var(--bg);color:var(--text);font:400 16px/24px var(--font-body);-webkit-font-smoothing:antialiased}
+.num{font-variant-numeric:tabular-nums !important}
+h1,h2,h3{font-family:var(--font-head);margin:0}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:4px}
+.page{max-width:1180px;margin:0 auto;padding:32px 16px 80px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:40px}
+.top h1{font-size:30px;line-height:36px;letter-spacing:-.01em;font-weight:700}
+.top p{margin:8px 0 0;color:var(--text-2);max-width:62ch}
+.toggle{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 14px;border-radius:var(--r-control);border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font:600 14px var(--font-body);cursor:pointer;flex-shrink:0}
+.toggle svg{width:18px;height:18px}
+section.doc{margin-top:56px}
+section.doc > h2{font-size:22px;line-height:28px;font-weight:600;margin-bottom:6px}
+section.doc > .lead{color:var(--text-2);margin:0 0 24px;max-width:70ch}
+
+/* Concepto */
+.concept{display:grid;grid-template-columns:1.1fr 1fr;gap:40px;align-items:start}
+.concept blockquote{margin:0;font-family:var(--font-head);font-weight:700;font-size:26px;line-height:32px;letter-spacing:-.01em;color:var(--primary-ink)}
+.concept .why{color:var(--text-2);margin-top:12px;max-width:52ch}
+.principles{margin:0;padding:0;list-style:none;display:grid;gap:14px}
+.principles li{padding-left:14px;border-left:2px solid var(--border)}
+.principles b{display:block;font-family:var(--font-head);font-weight:600;font-size:16px}
+.principles span{color:var(--text-2);font-size:14px;line-height:20px}
+.tension{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:32px}
+.tension div{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:16px;box-shadow:var(--edge)}
+.tension h3{font-size:16px;line-height:22px;font-weight:600;margin-bottom:4px}
+.tension p{margin:0;font-size:14px;line-height:20px;color:var(--text-2)}
+.tension .verdict{display:inline-block;font:600 12px/16px var(--font-body);padding:2px 8px;border-radius:999px;margin-bottom:8px}
+.v-keep{background:var(--primary-soft);color:var(--primary-ink)}
+.v-drop{background:var(--danger-soft);color:var(--danger)}
+
+/* Paleta */
+.palettes{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.palette{background:var(--bg);color:var(--text);border-radius:var(--r-card);border:1px solid var(--border);padding:20px}
+.palette h3{font-size:17px;line-height:24px;font-weight:600;margin-bottom:12px}
+.sw{display:grid;grid-template-columns:40px 1fr auto;gap:12px;align-items:center;padding:8px 0;border-top:1px solid var(--border)}
+.sw:first-of-type{border-top:0}
+.chip{width:40px;height:40px;border-radius:var(--r-chip);border:1px solid var(--border);display:grid;place-items:center;font:700 14px var(--font-head)}
+.sw .name{font:600 14px/20px var(--font-body)}
+.sw .name code{font:600 12px/16px var(--font-body);color:var(--text-3);margin-left:6px}
+.sw .role{font-size:13px;line-height:18px;color:var(--text-2)}
+.ratio{font:600 12px/16px var(--font-body);font-variant-numeric:tabular-nums;padding:3px 8px;border-radius:999px;white-space:nowrap;text-align:right}
+.ratio.ok{background:var(--success-soft);color:var(--success)}
+.ratio.ui{background:var(--primary-soft);color:var(--primary-ink)}
+.ratio.no{background:var(--danger-soft);color:var(--danger)}
+.ratio.na{color:var(--text-3)}
+
+/* Tipografía */
+.typo{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.specimen{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:20px;box-shadow:var(--edge)}
+.trow{display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:baseline;padding:10px 0;border-top:1px solid var(--border)}
+.trow:first-child{border-top:0}
+.trow .meta{font:600 12px/16px var(--font-body);color:var(--text-3);font-variant-numeric:tabular-nums}
+.compare{display:flex;gap:24px;margin-top:8px;flex-wrap:wrap}
+.compare div{font-size:13px;color:var(--text-2)}
+.compare strong{display:block;font:700 22px/28px var(--font-head);color:var(--text)}
+
+/* Componentes */
+.comps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:20px;box-shadow:var(--edge)}
+.panel h3{font-size:16px;line-height:22px;font-weight:600;margin-bottom:12px}
+.levels{display:grid;gap:14px}
+.blockdemo{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.blockdemo .cell{position:relative;height:84px;background:var(--surface-2);border-radius:var(--r-chip)}
+.blockdemo .cell .blk{position:absolute;inset:6px}
+.blockdemo p{margin:6px 0 0;font-size:12px;line-height:16px;color:var(--text-2)}
+.btnrow{display:flex;flex-wrap:wrap;gap:10px}
+
+/* Maquetas */
+.phones{display:flex;gap:40px;justify-content:center;flex-wrap:wrap}
+.phone-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;width:min(390px,100%)}
+.phone-wrap > span{font:600 13px var(--font-body);color:var(--text-2)}
+.phone{width:100%;border-radius:44px;padding:10px;background:#0B1424;box-shadow:0 30px 60px -20px rgb(0 20 50 / .35)}
+.screen{position:relative;min-height:824px;border-radius:34px;overflow:hidden;background:var(--bg);color:var(--text)}
+.scroll{padding-bottom:44px}
+
+/* --- Componentes de producto (dentro de las maquetas) --- */
+.status{height:44px;display:flex;justify-content:space-between;align-items:center;padding:0 28px;font:600 14px var(--font-body)}
+.appbar{display:flex;align-items:center;justify-content:space-between;padding:4px 16px 12px}
+.appbar .brand{font:700 15px/20px var(--font-head);color:var(--primary-ink);letter-spacing:.01em}
+.appbar .sub{font:400 12px/16px var(--font-body);color:var(--text-3)}
+.live{display:inline-flex;align-items:center;gap:6px;font:600 12px/16px var(--font-body);color:var(--text-2)}
+.live i{width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 0 3px var(--success-soft)}
+.week{margin:0 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:12px 12px 10px;box-shadow:var(--shadow-1),var(--edge)}
+.week-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.week-head h2{font-size:16px;line-height:22px;font-weight:600}
+.week-head span{font:600 12px/16px var(--font-body);color:var(--text-2)}
+.grid{display:grid;grid-template-columns:22px repeat(6,1fr);column-gap:4px}
+.grid .dh{font:600 11px/14px var(--font-body);font-stretch:87.5%;color:var(--text-3);text-align:center;padding-bottom:4px}
+.axis{position:relative}
+.axis span{position:absolute;right:2px;font:600 10px/10px var(--font-body);font-stretch:87.5%;color:var(--text-3);font-variant-numeric:tabular-nums;transform:translateY(-50%)}
+.col{position:relative;height:var(--h);background:var(--surface);border-radius:4px;
+  background-image:linear-gradient(var(--surface-2),var(--surface-2));background-repeat:no-repeat;background-size:100% var(--night-h);background-position:0 var(--night-top)}
+.col::before{content:"";position:absolute;inset:0;border-radius:4px;border:1px solid var(--border);pointer-events:none}
+.col.sat{background-image:linear-gradient(var(--surface-2),var(--surface-2)),linear-gradient(var(--surface-2),var(--surface-2));background-size:100% var(--night-h),100% var(--morning-h);background-position:0 var(--night-top),0 0}
+.blk{position:absolute;left:2px;right:2px;border-radius:var(--r-chip);font:600 10.5px/12px var(--font-body);font-stretch:87.5%;font-variant-numeric:tabular-nums;padding:3px 4px;overflow:hidden;white-space:nowrap}
+.blk.enrolled{background:var(--block-enrolled-bg);color:var(--block-enrolled-fg);box-shadow:inset 3px 0 0 var(--block-enrolled-edge)}
+.blk.preview{background:var(--primary-soft);color:var(--primary-ink);border:1.5px dashed var(--primary-ink);padding:2px 3px}
+.blk.reserved{background:var(--accent-soft);color:var(--text);box-shadow:inset 3px 0 0 var(--accent)}
+.blk.conflict{color:var(--danger);border:1.5px solid var(--danger);background:repeating-linear-gradient(135deg,var(--danger-soft) 0 5px,var(--surface) 5px 9px)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:10px;font:400 12px/16px var(--font-body);color:var(--text-2)}
+.legend i{display:inline-block;width:12px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+.sem{margin:28px 16px 8px;font:600 14px/20px var(--font-body);color:var(--text-2)}
+.subject{margin:0 16px;border-top:1px solid var(--border)}
+.subject:last-of-type{border-bottom:1px solid var(--border)}
+.srow{display:grid;grid-template-columns:20px 1fr auto;gap:10px;align-items:center;min-height:60px;padding:8px 0;width:100%;background:none;border:0;color:inherit;text-align:left;font:inherit}
+.srow svg{width:18px;height:18px;color:var(--text-3)}
+.srow .t{font:600 16px/22px var(--font-head)}
+.srow .m{font:400 13px/18px var(--font-body);color:var(--text-3);font-variant-numeric:tabular-nums}
+.srow .r{font:600 12px/16px var(--font-body);color:var(--text-2);text-align:right}
+.srow .r.ok{color:var(--success);display:inline-flex;gap:4px;align-items:center}
+.srow .r.res{color:var(--accent-ink);display:inline-flex;gap:4px;align-items:center}
+.srow .r svg{width:14px;height:14px;color:currentColor}
+.nrcs{display:grid;gap:10px;padding:0 0 16px 30px}
+
+.nrc{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:14px;box-shadow:var(--edge)}
+.nrc.sel{border:2px solid var(--primary-ink);background:var(--primary-soft);padding:13px}
+.nrc .l1{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.nrc .code{font:700 16px/22px var(--font-body);font-variant-numeric:tabular-nums}
+.nrc .mod{font:400 12px/16px var(--font-body);color:var(--text-2)}
+.nrc .when{font:600 14px/20px var(--font-body);margin-top:4px;font-variant-numeric:tabular-nums}
+.nrc .where{font:400 13px/18px var(--font-body);color:var(--text-2)}
+
+.seats{margin-top:10px}
+.seats .lab{display:flex;justify-content:space-between;align-items:center;font:600 13px/18px var(--font-body);font-variant-numeric:tabular-nums;margin-bottom:6px}
+.seats .lab .msg{display:inline-flex;align-items:center;gap:5px}
+.seats .lab svg{width:14px;height:14px}
+.seats .lab .tot{color:var(--text-3);font-weight:400}
+.seats.low .msg{color:var(--warning)}
+.seats.last .msg{color:var(--danger)}
+.seats.out .msg{color:var(--text-2)}
+.bar{display:flex;gap:2px;height:10px}
+.bar b{flex:1;border-radius:var(--r-seat);background:var(--seat-taken)}
+.bar b.f{background:var(--seat-free)}
+.seats.last .bar b.f{background:var(--danger);outline:1.5px solid var(--danger);outline-offset:1px}
+.seats.out .bar b{background:repeating-linear-gradient(135deg,var(--seat-taken) 0 2px,transparent 2px 4px)}
+
+.alt{border-radius:var(--r-card);background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent);padding:14px 14px 14px 17px}
+.alt p{margin:0;font:400 14px/20px var(--font-body)}
+.alt p b{font-weight:600}
+.alt .mini{margin-top:10px;padding:10px 12px;background:var(--surface);border-radius:var(--r-control);border:1px solid var(--border);font:400 13px/18px var(--font-body);color:var(--text-2);font-variant-numeric:tabular-nums}
+.alt .mini strong{color:var(--text);font-weight:700}
+.alt .acts{display:flex;align-items:center;gap:14px;margin-top:12px}
+.link{font:600 14px/20px var(--font-body);color:var(--info);text-decoration:underline;text-underline-offset:3px;background:none;border:0;padding:10px 0;cursor:pointer}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:48px;padding:0 20px;border-radius:var(--r-control);border:0;font:600 15px/20px var(--font-body);font-variant-numeric:tabular-nums;cursor:pointer;transition:transform var(--dur-press) var(--ease-out)}
+.btn:active{transform:scale(.98)}
+.btn svg{width:18px;height:18px}
+.btn.primary{background:var(--primary);color:var(--on-primary);box-shadow:inset 0 1px 0 rgb(255 255 255 / .18)}
+.btn.sm{height:44px;padding:0 16px;font-size:14px}
+.btn.busy{background:var(--primary);color:var(--on-primary);opacity:.85;cursor:progress}
+.btn.reserved{background:var(--accent);color:var(--on-accent)}
+.btn.done{background:var(--success-soft);color:var(--success);box-shadow:inset 0 0 0 1.5px var(--success)}
+.btn.ghost{background:transparent;color:var(--text);box-shadow:inset 0 0 0 1px var(--border-strong)}
+.spin{width:16px;height:16px;border-radius:50%;border:2px solid rgb(255 255 255 / .35);border-top-color:#fff;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.sheet{position:absolute;left:0;right:0;bottom:0;padding:12px 16px 26px;border-radius:var(--r-sheet) var(--r-sheet) 0 0;background:var(--surface);border-top:1px solid var(--border);box-shadow:var(--shadow-2),var(--edge);display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}
+@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .sheet{background:var(--sheet-bg);-webkit-backdrop-filter:blur(16px) saturate(140%);backdrop-filter:blur(16px) saturate(140%)}
+}
+@media (prefers-reduced-transparency: reduce){.sheet{background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none}}
+.sheet .s1{font:700 15px/20px var(--font-body);font-variant-numeric:tabular-nums}
+.sheet .s2{font:400 13px/18px var(--font-body);color:var(--text-2);font-variant-numeric:tabular-nums}
+
+.toast{display:flex;gap:10px;align-items:flex-start;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-control);padding:12px 14px;box-shadow:var(--shadow-2),var(--edge);font:400 14px/20px var(--font-body);max-width:360px}
+.toast svg{width:20px;height:20px;color:var(--success);flex-shrink:0;margin-top:1px}
+.toast.err svg{color:var(--danger)}
+.toast.off svg{color:var(--text-2)}
+.states{display:grid;gap:10px}
+.skel{display:grid;gap:8px}
+.skel i{display:block;height:12px;border-radius:6px;background:var(--surface-2);animation:pulse 1.4s var(--ease-in-out) infinite}
+@keyframes pulse{50%{opacity:.55}}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:1ms!important;animation-iteration-count:1!important;transition-duration:1ms!important}
+}
+@media (max-width: 900px){
+  .concept,.tension,.palettes,.typo,.comps{grid-template-columns:minmax(0,1fr)}
+  .blockdemo{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width: 430px){
+  .phone{padding:0;border-radius:0;background:none;box-shadow:none;height:auto}
+  .screen{border-radius:var(--r-card);border:1px solid var(--border)}
+  .top{flex-direction:column}
+  .sw{grid-template-columns:36px 1fr}
+  .sw .ratio{grid-column:2;justify-self:start}
+  .trow{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <div>
+      <h1>Brief de diseño: inscripción 2027-1</h1>
+      <p>Vista previa para aprobación. Paleta con contrastes medidos, tipografía, componentes clave y la pantalla de inscripción a 390 px en claro y oscuro. El detalle completo está en <code>design/brief.md</code>.</p>
+    </div>
+    <button class="toggle" id="toggle" type="button" aria-label="Cambiar tema de esta página">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg>
+      <span id="toggle-label">Tema: sistema</span>
+    </button>
+  </header>
+
+  <section class="doc" aria-labelledby="c-h">
+    <h2 id="c-h">Concepto</h2>
+    <div class="concept">
+      <div>
+        <blockquote>El horario es el mapa.</blockquote>
+        <p class="why">La semana es la protagonista: cada NRC es una pieza que te pruebas sobre tu semana antes de inscribirla. Los cupos son sillas que se cuentan una a una. Azul institucional tranquilo de base; el dorado queda para lo que corre contra el tiempo.</p>
+      </div>
+      <ul class="principles">
+        <li><b>Probar antes de inscribir</b><span>Tocar un NRC dibuja sus bloques en tu semana.</span></li>
+        <li><b>Números que se cuentan</b><span>Cifras tabulares y texto explícito; el color nunca va solo.</span></li>
+        <li><b>El dorado significa "ahora"</b><span>Reserva corriendo, últimos cupos, foco en oscuro. Nunca decoración.</span></li>
+        <li><b>Una mano, un pulgar</b><span>La acción vive abajo; objetivos de 44 a 48 px.</span></li>
+        <li><b>Calma bajo presión</b><span>El movimiento solo explica un cambio.</span></li>
+      </ul>
+    </div>
+    <div class="tension">
+      <div>
+        <span class="verdict v-keep">Se conserva, en un solo lugar</span>
+        <h3>Glassmorphism del manual</h3>
+        <p>Solo en la bandeja inferior de acción en móvil: deja ver la semana detrás mientras decides. Superficie al 86 % con desenfoque de 16 px y respaldo sólido sin soporte o con transparencia reducida. Ninguna tarjeta lleva vidrio.</p>
+      </div>
+      <div>
+        <span class="verdict v-drop">Se reemplaza</span>
+        <h3>Botón con degradado en oscuro</h3>
+        <p>Blanco sobre #1E6BFF da 4.56:1; un degradado hacia #4C8DFF cae a 3.20:1 y el texto del botón principal deja de cumplir AA. Va sólido, con un filo de luz interior de 1 px arriba que conserva la intención de brillo.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="doc" aria-labelledby="p-h">
+    <h2 id="p-h">Paleta y contraste</h2>
+    <p class="lead">Marca solo del manual; semánticos derivados. Ratio medido contra la superficie indicada. Verde = AA texto (≥ 4.5), azul = solo texto grande o UI (≥ 3), rojo = no cumple y tiene regla de uso.</p>
+    <div class="palettes">
+      <div class="palette t-light" id="pal-light"><h3>Claro</h3></div>
+      <div class="palette t-dark" id="pal-dark"><h3>Oscuro</h3></div>
+    </div>
+  </section>
+
+  <section class="doc" aria-labelledby="t-h">
+    <h2 id="t-h">Tipografía</h2>
+    <p class="lead">Montserrat para títulos y la cifra de cupos; Open Sans variable para todo lo demás, estrechada al 87.5 % dentro del calendario. Horas, NRC y cupos siempre en cifras tabulares.</p>
+    <div class="typo">
+      <div class="specimen">
+        <div class="trow"><span class="meta">Título 24/30, 30/36</span><span style="font:700 26px/32px var(--font-head);letter-spacing:-.01em">Inscripción 2027-1</span></div>
+        <div class="trow"><span class="meta">Sección 19/24, 22/28</span><span style="font:600 20px/26px var(--font-head)">Tu semana</span></div>
+        <div class="trow"><span class="meta">Materia 16/22, 17/24</span><span style="font:600 16px/22px var(--font-head)">Sistemas Operativos</span></div>
+        <div class="trow"><span class="meta">Cuerpo 16/24</span><span>Te guardamos el cupo 5 minutos mientras confirmamos.</span></div>
+        <div class="trow"><span class="meta">Compacto 14/20</span><span style="font-size:14px;line-height:20px;color:var(--text-2)">Docente: Laura Bermúdez Rincón</span></div>
+        <div class="trow"><span class="meta">Calendario 11/14</span><span style="font:600 12px/16px var(--font-body);font-stretch:87.5%" class="num">18:15–19:44 RGH A406LS27</span></div>
+      </div>
+      <div class="specimen">
+        <div class="trow"><span class="meta">Cifras tabulares</span>
+          <div>
+            <div class="compare">
+              <div><strong class="num">18:15<br>20:30<br>11:11</strong>tabulares</div>
+              <div><strong style="font-variant-numeric:proportional-nums">18:15<br>20:30<br>11:11</strong>proporcionales</div>
+            </div>
+            <p style="margin:12px 0 0;font-size:14px;line-height:20px;color:var(--text-2)">Con tabulares, "3 de 18" → "2 de 18" no mueve nada a su alrededor cuando el cupo cambia en vivo.</p>
+          </div>
+        </div>
+        <div class="trow"><span class="meta">Cifra de cupos 20/24</span><span class="num" style="font:700 22px/28px var(--font-head)">3 <span style="font:400 14px var(--font-body);color:var(--text-3)">de 18 libres</span></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="doc" aria-labelledby="k-h">
+    <h2 id="k-h">Componentes clave</h2>
+    <p class="lead">La barra de cupos es el elemento firma: una silla por cupo, ocupadas a la izquierda y libres a la derecha. El texto cambia de forma en cada umbral.</p>
+    <div class="comps">
+      <div class="panel">
+        <h3>Barra de cupos en vivo</h3>
+        <div class="levels" id="levels"></div>
+      </div>
+      <div class="panel">
+        <h3>Bloque del calendario</h3>
+        <div class="blockdemo">
+          <div><div class="cell"><div class="blk enrolled" style="white-space:normal">Est. Datos<br>18:15–19:44<br>A402</div></div><p>Inscrito</p></div>
+          <div><div class="cell"><div class="blk preview" style="white-space:normal">Vista previa<br>80852<br>18:15–19:44</div></div><p>Vista previa</p></div>
+          <div><div class="cell"><div class="blk reserved" style="white-space:normal">Inglés II<br>Reservado<br>4:32</div></div><p>Reservado (5 min)</p></div>
+          <div><div class="cell"><div class="blk conflict" style="white-space:normal">Cruza con<br>80852</div></div><p>Conflicto</p></div>
+        </div>
+        <h3 style="margin-top:24px">Botón Inscribir</h3>
+        <div class="btnrow">
+          <button class="btn primary sm" type="button">Inscribir 80852</button>
+          <button class="btn busy sm" type="button" aria-busy="true"><span class="spin" aria-hidden="true"></span>Inscribiendo…</button>
+          <button class="btn reserved sm num" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Reservado 4:32</button>
+          <button class="btn done sm" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Inscrita</button>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Avisos y estados</h3>
+        <div class="states">
+          <div class="toast"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg><span>Inscrita: Sistemas Operativos, NRC 80852.</span></div>
+          <div class="toast err"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L2.5 17.5A2 2 0 0 0 4.2 20.5h15.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg><span>Se cruza con Bases de Datos (NRC 81204) el martes a las 18:15.</span></div>
+          <div class="toast off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2l20 20M8.5 16.5a5 5 0 0 1 7 0M5 12.9a10 10 0 0 1 5.2-2.8M19 12.9a10 10 0 0 0-2.3-1.6M2 8.8a15 15 0 0 1 4.2-2.6M22 8.8A15 15 0 0 0 11 4.6M12 20h.01"/></svg><span>Sin conexión. Los cupos pueden haber cambiado. Reconectando…</span></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Carga y vacío</h3>
+        <div class="skel" aria-hidden="true"><i style="width:60%"></i><i style="width:85%"></i><i style="width:40%"></i></div>
+        <p style="margin:20px 0 4px;font-weight:600">Ningún grupo de esta materia encaja hoy con tu semana.</p>
+        <p style="margin:0 0 12px;font-size:14px;line-height:20px;color:var(--text-2)">La lista se actualiza sola si se abre un cupo.</p>
+        <button class="btn ghost sm" type="button">Ver mi horario</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="doc" aria-labelledby="m-h">
+    <h2 id="m-h">Pantalla de inscripción, 390 px</h2>
+    <p class="lead">Estudiante de 3.er semestre con Estructuras de Datos inscrita (lunes y miércoles), Inglés II reservado (sábado), y Sistemas Operativos 80852 en vista previa. El 86366 acaba de agotarse y aparece la alternativa en su lugar.</p>
+    <div class="phones">
+      <div class="phone-wrap"><div class="phone t-light"><div class="screen" data-mount></div></div><span>Claro, captura completa del desplazamiento</span></div>
+      <div class="phone-wrap"><div class="phone t-dark"><div class="screen" data-mount></div></div><span>Oscuro, captura completa del desplazamiento</span></div>
+    </div>
+  </section>
+</div>
+
+<template id="screen-tpl">
+  <div class="scroll">
+    <div class="status num"><span>21:04</span><span>5G</span></div>
+    <div class="appbar">
+      <div><div class="brand">UNIMINUTO</div><div class="sub num">Ingeniería de Sistemas, 2027-1</div></div>
+      <span class="live"><i aria-hidden="true"></i>Cupos en vivo</span>
+    </div>
+    <div class="week">
+      <div class="week-head"><h2>Tu semana</h2><span class="num">7 créditos inscritos</span></div>
+      <div class="grid" data-week></div>
+      <div class="legend">
+        <span><i style="background:var(--block-enrolled-bg);box-shadow:inset 3px 0 0 var(--block-enrolled-edge)"></i>Inscrita</span>
+        <span><i style="background:var(--primary-soft);outline:1.5px dashed var(--primary-ink);outline-offset:-1.5px"></i>Vista previa</span>
+        <span><i style="background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)"></i>Reservada</span>
+      </div>
+    </div>
+
+    <div class="sem">3.er semestre</div>
+    <div class="subject">
+      <button class="srow" type="button" aria-expanded="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+        <span><span class="t">Sistemas Operativos</span><br><span class="m">ISUMBG103, 3 créditos</span></span>
+        <span class="r">3 grupos</span>
+      </button>
+      <div class="nrcs">
+        <div class="nrc sel" aria-current="true">
+          <div class="l1"><span class="code">80852</span><span class="mod">Presencial, Calle 80</span></div>
+          <div class="when">Mar y Jue 18:15–19:44</div>
+          <div class="where">RGH A406LS27, Ricardo Peña Solano</div>
+          <div class="seats low" data-seats="3/18"></div>
+        </div>
+        <div class="alt" role="status">
+          <p><b>Se agotó 86366.</b> El 40930 tiene 6 cupos y no cruza con tu horario.</p>
+          <div class="mini"><strong>40930</strong> Sincrónica, Lun 20:30–21:59<br>Diana Carolina Ruiz</div>
+          <div class="acts"><button class="btn primary sm" type="button">Inscribir 40930</button><button class="link" type="button">Ver otros grupos</button></div>
+        </div>
+        <div class="nrc">
+          <div class="l1"><span class="code">81377</span><span class="mod">Presencial, Calle 80</span></div>
+          <div class="when">Vie 20:30–21:59</div>
+          <div class="where">RGH B201LS12, Andrés Felipe Mora</div>
+          <div class="seats last" data-seats="1/15"></div>
+        </div>
+      </div>
+    </div>
+    <div class="subject">
+      <button class="srow" type="button" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
+        <span><span class="t">Cálculo Integral</span><br><span class="m">MATE1051, 3 créditos</span></span>
+        <span class="r">4 grupos</span>
+      </button>
+    </div>
+    <div class="subject">
+      <button class="srow" type="button" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
+        <span><span class="t">Inglés II</span><br><span class="m">INGL1020, 3 créditos</span></span>
+        <span class="r res num"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Reservada 4:32</span>
+      </button>
+    </div>
+    <div class="subject">
+      <button class="srow" type="button" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
+        <span><span class="t">Estructuras de Datos</span><br><span class="m">ISUMBG033, 3 créditos</span></span>
+        <span class="r ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Inscrita</span>
+      </button>
+    </div>
+  </div>
+  <div class="sheet">
+    <div><div class="s1">Sistemas Operativos</div><div class="s2">80852, Mar y Jue 18:15–19:44</div></div>
+    <button class="btn primary" type="button">Inscribir</button>
+  </div>
+</template>
+
+<script>
+(function(){
+  /* Paleta: [token, hex, rol, ratio, clase, texto del ratio] */
+  var L=[
+    ['--bg','#F3F5F8','Fondo de app',null],
+    ['--surface','#FFFFFF','Tarjetas, calendario',null],
+    ['--surface-2','#E8EDF3','Hundido, franja nocturna',null],
+    ['--text','#14233A','Texto principal','15.77','ok'],
+    ['--text-2','#555555','Secundario (manual)','7.46','ok'],
+    ['--text-3','#626D7B','Metadatos, ejes','5.26','ok'],
+    ['--border-strong','#8A96A6','Bordes de controles','3.00','ui'],
+    ['--primary','#003366','Primario (manual)','12.61','ok','Aa','#FFFFFF'],
+    ['--primary-soft','#E3EBF4','Vista previa, selección','10.48','ok','Aa','#003366'],
+    ['--accent','#F2A900','Acento (manual), solo relleno','2.01','no','Aa','#14233A'],
+    ['--accent-ink','#8A5A00','Dorado como texto','5.93','ok'],
+    ['--accent-soft','#FDF1D4','Reservado, aviso','5.28','ok','Aa','#8A5A00'],
+    ['--success','#1C7A4A','Confirmada','5.34','ok'],
+    ['--warning','#9A5A00','Pocos cupos','5.47','ok'],
+    ['--danger','#B3261E','Último cupo, cruce, error','6.54','ok'],
+    ['--info','#1F5FA8','Avisos, enlaces','6.44','ok'],
+    ['--focus','#003366','Anillo de foco','11.55','ui']
+  ];
+  var D=[
+    ['--bg','#0A0F1D','Fondo (manual)',null],
+    ['--surface','#121A2D','Superficie (manual)',null],
+    ['--surface-2','#1A2440','Hundido, franja nocturna',null],
+    ['--text','#E2E8F0','Texto principal (manual)','14.06','ok'],
+    ['--text-2','#94A3B8','Secundario (manual)','6.76','ok'],
+    ['--text-3','#7D8BA1','Metadatos, ejes','5.02','ok'],
+    ['--border-strong','#5B6A8A','Bordes de controles','3.20','ui'],
+    ['--primary','#1E6BFF','Primario (manual), relleno','4.56','ok','Aa','#FFFFFF'],
+    ['--primary-ink','#6EA8FF','Primario como texto','7.19','ok'],
+    ['--primary-soft','#15264A','Vista previa, inscrito','6.18','ok','Aa','#6EA8FF'],
+    ['--accent','#F5B014','Acento (manual)','9.17','ok','Aa','#0A0F1D'],
+    ['--accent-soft','#2A2414','Reservado, aviso','8.16','ok','Aa','#F5B014'],
+    ['--success','#3DBE7E','Confirmada','7.32','ok'],
+    ['--warning','#F5B014','Pocos cupos','9.17','ok'],
+    ['--danger','#FF7A6E','Último cupo, cruce, error','6.82','ok'],
+    ['--info','#6EA8FF','Avisos, enlaces','7.19','ok'],
+    ['--focus','#F5B014','Anillo de foco','9.17','ui']
+  ];
+  var note={
+    '#F2A900':'sobre blanco: no',
+    '#1E6BFF':'texto blanco encima'
+  };
+  function pal(el,rows){
+    rows.forEach(function(r){
+      var d=document.createElement('div');d.className='sw';
+      var chip='<span class="chip" style="background:'+r[1]+(r[6]?';color:'+r[6]:'')+'">'+(r[5]||'')+'</span>';
+      var lab=r[3]?(r[4]==='no'?'NO ':(r[4]==='ui'?'UI ':'AA '))+r[3]:'base';
+      var ratio='<span class="ratio '+(r[3]?r[4]:'na')+'" title="'+(note[r[1]]||'')+'">'+lab+'</span>';
+      d.innerHTML=chip+'<div><div class="name">'+r[1]+'<code>'+r[0]+'</code></div><div class="role">'+r[2]+'</div></div>'+ratio;
+      el.appendChild(d);
+    });
+  }
+  pal(document.getElementById('pal-light'),L);
+  pal(document.getElementById('pal-dark'),D);
+
+  /* Barra de cupos */
+  var ico={
+    hour:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12M6 21h12M7 3c0 5 10 5 10 9s-10 4-10 9M17 3c0 5-10 5-10 9"/></svg>',
+    warn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L2.5 17.5A2 2 0 0 0 4.2 20.5h15.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>'
+  };
+  function seats(el){
+    var p=el.getAttribute('data-seats').split('/'),f=+p[0],t=+p[1],msg,tot='';
+    if(f===0){el.classList.add('out');msg='Agotado';tot=t+' de '+t+' ocupados';}
+    else if(f===1){el.classList.add('last');msg=ico.warn+'Último cupo';tot='de '+t;}
+    else if(f<=3||f/t<=.25){el.classList.add('low');msg=ico.hour+'Quedan '+f;tot='de '+t;}
+    else{msg=f+' libres';tot='de '+t;}
+    var bar='';for(var i=0;i<t;i++){bar+='<b'+(i>=t-f?' class="f"':'')+'></b>';}
+    el.innerHTML='<div class="lab"><span class="msg">'+msg+'</span><span class="tot">'+tot+'</span></div><div class="bar" role="img" aria-label="'+f+' de '+t+' cupos libres">'+bar+'</div>';
+  }
+  var lv=document.getElementById('levels');
+  ['18/18','9/18','3/18','1/18','0/18'].forEach(function(s){var d=document.createElement('div');d.className='seats';d.setAttribute('data-seats',s);lv.appendChild(d);seats(d);});
+
+  /* Semana compacta: 07:00–22:00, 12 px por hora */
+  var PX=12,START=7,END=22,H=(END-START)*PX;
+  function y(hm){var a=hm.split(':');return ((+a[0]-START)+(+a[1])/60)*PX;}
+  var days=['LUN','MAR','MIE','JUE','VIE','SAB'];
+  var blocks=[
+    {d:'LUN',i:'18:15',f:'19:44',k:'enrolled',t:'81204'},
+    {d:'MIE',i:'18:15',f:'19:44',k:'enrolled',t:'81204'},
+    {d:'MAR',i:'18:15',f:'19:44',k:'preview',t:'80852'},
+    {d:'JUE',i:'18:15',f:'19:44',k:'preview',t:'80852'},
+    {d:'SAB',i:'08:30',f:'09:59',k:'reserved',t:'4:32'}
+  ];
+  function week(g){
+    var html='<span></span>'+days.map(function(d){return '<span class="dh">'+d+'</span>';}).join('');
+    html+='<div class="axis" style="height:'+H+'px">'+[7,12,18,22].map(function(h){return '<span style="top:'+((h-START)*PX)+'px">'+(h<10?'0'+h:h)+'</span>';}).join('')+'</div>';
+    days.forEach(function(d){
+      var st='--h:'+H+'px;--night-top:'+y('18:00')+'px;--night-h:'+(H-y('18:00'))+'px;--morning-h:'+y('12:00')+'px';
+      var inner=blocks.filter(function(b){return b.d===d;}).map(function(b){
+        return '<div class="blk '+b.k+'" style="top:'+y(b.i)+'px;height:'+(y(b.f)-y(b.i))+'px">'+b.t+'</div>';
+      }).join('');
+      html+='<div class="col'+(d==='SAB'?' sat':'')+'" style="'+st+'">'+inner+'</div>';
+    });
+    g.innerHTML=html;
+  }
+  var tpl=document.getElementById('screen-tpl');
+  document.querySelectorAll('[data-mount]').forEach(function(m){
+    m.appendChild(tpl.content.cloneNode(true));
+    m.querySelectorAll('[data-seats]').forEach(seats);
+    week(m.querySelector('[data-week]'));
+  });
+
+  /* Toggle de tema: sistema → claro → oscuro */
+  var root=document.documentElement,btn=document.getElementById('toggle'),lab=document.getElementById('toggle-label');
+  var modes=['system','light','dark'],names={system:'Tema: sistema',light:'Tema: claro',dark:'Tema: oscuro'},cur='system';
+  try{cur=localStorage.getItem('brief-theme')||'system';}catch(e){}
+  function apply(m){cur=m;if(m==='system'){root.removeAttribute('data-theme');}else{root.setAttribute('data-theme',m);}lab.textContent=names[m];try{localStorage.setItem('brief-theme',m);}catch(e){}}
+  apply(cur);
+  btn.addEventListener('click',function(){apply(modes[(modes.indexOf(cur)+1)%3]);});
+})();
+</script>
+</body>
+</html>
