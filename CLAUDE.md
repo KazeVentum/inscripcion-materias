@@ -63,7 +63,7 @@ es la fuente de verdad y se simula como colecciones de Mongo propias.
 | App Service + Functions | API FastAPI + worker de confirmación | `api`, `enroll-worker` | 8000 |
 | App Service (web) | Next.js | `web` | 3000 |
 | Entra ID | Login simulado con JWT, usuarios sintéticos | (en `api`) | — |
-| Power BI | Página `/coordinacion/analitica` en la web | (en `web`) | — |
+| Power BI | Página `/coordinacion/analitica` en la web (lee `/api/v1/coordinacion/analitica/*`, que consulta gold con DuckDB) | `web`, `api` | — |
 
 Storybook corre fuera de Docker (`make storybook`, puerto 6006).
 
@@ -222,6 +222,15 @@ intentos fallidos por minuto por usuario. Demos: `est-000001` (1.er semestre), `
 HU3), `est-000003` (6.º), `est-000004` (9.º, habilitada para Práctica), `est-000005` (rezago), `est-000006` (3.er semestre, jornada tarde).
 `franja` usa los valores `mañana | tarde | noche`.
 
+**Coordinador (HU5):** usuario sintético `coord-0001` (misma `DEMO_PASSWORD`, definido en la
+API, no está en `estudiantes`). El JWT lleva `rol` (`estudiante` | `coordinador`); la respuesta
+de login también trae `rol`. Todo endpoint de estudiante responde `403 rol_no_permitido` a un
+coordinador, y `/coordinacion/*` lo mismo a un estudiante. Endpoints (solo coordinador, leen
+gold de MinIO con DuckDB y caché de 10 s; si gold no existe responden vacío con
+`generadoEn: null`): `GET /api/v1/coordinacion/me` y
+`GET /api/v1/coordinacion/analitica/{resumen, demanda-nrc, ocupacion-franja, combinaciones,
+auditoria, demanda-insatisfecha}`. Tipos en `web/src/lib/tipos.ts`.
+
 ### Data lake (MinIO)
 
 | Capa | Bucket | Contenido | Formato |
@@ -231,6 +240,31 @@ HU3), `est-000003` (6.º), `est-000004` (9.º, habilitada para Práctica), `est-
 | Oro | `gold` | `demanda_nrc`, `ocupacion_franja`, `combinaciones_nrc`, `auditoria_intentos` | Parquet |
 
 Validación de datos: los conteos bronce → plata → oro deben cuadrar.
+
+**Servicio `lake-worker`** (`services/lake`, sin puerto): ingesta continua de
+`inscripcion.intentos`, `inscripcion.resultados` y `oferta.busquedas` a bronce (grupo
+`lake-bronce`; lotes de 500 mensajes o 3 s; **el offset se confirma solo después de escribir**,
+entrega at-least-once) y, cada `LAKE_RECALCULO_MIN` minutos (5), recalcula plata y oro completos
+con DuckDB + `httpfs` sobre MinIO. `mem_limit` 384 MB, `read_only`, `cap_drop ALL`.
+
+- Bronce: `tipo={intento|confirmacion|cancelacion|busqueda|invalido}/fecha={ocurridoEn UTC}/
+  {topic}-p{particion}-o{primero}-o{ultimo}.jsonl`. Lo que no es un evento va a `tipo=invalido`.
+- Plata (`silver/*.parquet`): `intentos` (unido a NRC/materia/sede/modalidad/franja/cupoTotal y
+  a programa/semestre/jornada del estudiante), `confirmaciones`, `cancelaciones`, `busquedas`,
+  `dim_nrc`. `estudianteId` → `estudianteHash = sha256(HASH_SALT + ":" + estudianteId)`. Sin
+  nombres, correos, docentes ni el id en claro. Se deduplica por `eventId`; son inválidos
+  (contados por motivo, no escritos) el JSON roto, sin `eventId`/estudiante/NRC, tipo o
+  resultado desconocido, fecha inválida o latencia negativa.
+- Oro (`gold/*.parquet`): `demanda_nrc` (intentos, éxitos, sin_cupo, ocupación, cupos vacíos,
+  `llenoEn`, `tiempoHastaLlenarseS`), `ocupacion_franja`, `combinaciones_nrc` (pares de NRC
+  activos por programa y semestre, mínimo 2 estudiantes), `auditoria_intentos` (p50/p95 por
+  tipo y resultado; `fecha` nula = total) y `demanda_insatisfecha` (materias con más
+  `sin_cupo`, HU5). Más `gold/_meta/validacion.json` (`generadoEn`, KPIs y checks).
+- Cuadratura: `líneas bronce = eventos plata + duplicados + inválidos`, y las sumas de oro
+  (intentos, éxitos, sin_cupo, eventos) igualan a plata; además no puede haber datos personales.
+- Ocupación actual = `cupoTotal − cupos libres en Redis` al recalcular (snapshot en `dim_nrc`);
+  el momento de llenado se infiere con la ocupación inicial = ocupados − neto de los eventos.
+  Tras un `make seed` hay que correr `make lake-limpiar`, o los eventos viejos mezclan estados.
 
 ## Datos de referencia (`data/reference/`)
 
@@ -272,7 +306,7 @@ data/seed/               generador sintético (Python); salidas en data/seed/out
 design/                  brief de diseño y decisiones visuales
 services/api/            FastAPI (app/, tests/)
 services/enroll-worker/  confirmación contra sistema académico simulado
-services/lake/           ingesta bronce y jobs plata/oro (DuckDB)
+services/lake/           ingesta bronce, jobs plata/oro (DuckDB), simulador de trafico
 web/                     Next.js App Router + Storybook + Playwright
 tests/load/              k6 y prueba de concurrencia
 ```
@@ -302,7 +336,9 @@ tests/load/              k6 y prueba de concurrencia
 | `make load-test` | concurrencia (500 vs 10 cupos) + k6 por Docker |
 | `make e2e` | Playwright contra la app levantada |
 | `make storybook` | Storybook en el puerto 6006 |
-| `make lake` | corre bronce → plata → oro |
+| `make lake` | espera a que bronce esté al día, recalcula plata → oro e imprime los conteos de validación (sale con 1 si no cuadran) |
+| `make lake-limpiar` | vacía los buckets `bronze`, `silver` y `gold` (empezar una demo sin eventos viejos) |
+| `make simular` | ~500 estudiantes sintéticos (no los demos 1–6) usan la API real: búsquedas, inscripciones, disputas por el último cupo, cancelaciones, fuera_de_jornada y prerrequisito. `ARGS="--estudiantes 800 --semilla 7"` |
 
 k6 no está instalado localmente: se ejecuta con la imagen `grafana/k6`.
 
