@@ -1,0 +1,8 @@
+node_modules
+.next
+storybook-static
+test-results
+playwright-report
+tests/screenshots
+**/*.tsbuildinfo
+.env*

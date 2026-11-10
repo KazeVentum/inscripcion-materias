@@ -189,7 +189,30 @@ services:
     networks: [inscripcion]
 
   # lake-worker:    # fase 6 (bronce -> plata -> oro con DuckDB)
-  # web:            # fase 5 (Next.js, puerto 3000)
+  # --- Fase 5: web (Next.js standalone; el navegador habla con /api/v1/* y Next lo reenvia a api) ---
+  web:
+    build:
+      context: ./web
+      args:
+        API_INTERNAL_URL: http://api:8000
+    <<: *restart
+    mem_limit: 320m
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      NODE_OPTIONS: --max-old-space-size=192
+    ports: ["127.0.0.1:3000:3000"]
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/login"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks: [inscripcion]
 
 networks:
   inscripcion:
