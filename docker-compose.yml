@@ -1,0 +1,140 @@
+# Infraestructura local que simula Azure. Maquina de 8 GB: mem_limit en todo servicio.
+# Lee variables de .env (make up lo crea desde .env.example).
+name: inscripcion
+
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+  mongo:
+    image: mongo:7.0.14
+    <<: *restart
+    mem_limit: 512m
+    command: ["mongod", "--wiredTigerCacheSizeGB", "0.25", "--bind_ip_all"]
+    ports: ["127.0.0.1:27017:27017"]
+    volumes: ["mongo-data:/data/db"]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks: [inscripcion]
+
+  redis:
+    image: redis:7.4.1-alpine
+    <<: *restart
+    mem_limit: 256m
+    command: ["redis-server", "--maxmemory", "200mb", "--maxmemory-policy", "noeviction", "--appendonly", "yes"]
+    ports: ["127.0.0.1:6379:6379"]
+    volumes: ["redis-data:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [inscripcion]
+
+  redpanda:
+    image: redpandadata/redpanda:v24.2.7
+    <<: *restart
+    mem_limit: 768m
+    command:
+      - redpanda
+      - start
+      - --mode=dev-container
+      - --smp=1
+      - --memory=512M
+      - --overprovisioned
+      - --reserve-memory=0M
+      - --node-id=0
+      - --check=false
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
+    ports: ["127.0.0.1:19092:19092"]
+    volumes: ["redpanda-data:/var/lib/redpanda/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health --exit-when-healthy --watch=false | grep -q 'Healthy:.*true'"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 15s
+    networks: [inscripcion]
+
+  minio:
+    # MinIO dejo de publicar imagenes oficiales (Docker Hub/quay); se usa el espejo bitnamilegacy con version fija.
+    image: bitnamilegacy/minio:2025.7.23-debian-12-r3
+    <<: *restart
+    mem_limit: 384m
+    entrypoint: ["minio"]
+    command: ["server", "/bitnami/minio/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minio-dev}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minio-dev-secret}
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes: ["minio-data:/bitnami/minio/data"]
+    healthcheck:
+      # bitnami arranca un MinIO temporal en el setup; exigir tambien la consola evita un "healthy" prematuro
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/minio/health/ready && curl -fsS -o /dev/null http://localhost:9001/"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+    networks: [inscripcion]
+
+  # --- One-shot: inicializacion (terminan con codigo 0) ---
+  minio-init:
+    profiles: ["init"]
+    image: bitnamilegacy/minio-client:2025.7.21-debian-12-r2
+    mem_limit: 128m
+    restart: "no"
+    depends_on:
+      minio: { condition: service_healthy }
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minio-dev}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minio-dev-secret}
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+          mc alias set local http://minio:9000 "$$MINIO_ACCESS_KEY" "$$MINIO_SECRET_KEY" && break
+          sleep 2
+        done &&
+        for b in bronze silver gold; do mc mb --ignore-existing local/$$b; done &&
+        mc ls local
+    networks: [inscripcion]
+
+  redpanda-init:
+    profiles: ["init"]
+    image: redpandadata/redpanda:v24.2.7
+    mem_limit: 128m
+    restart: "no"
+    depends_on:
+      redpanda: { condition: service_healthy }
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        for t in inscripcion.intentos inscripcion.resultados oferta.busquedas; do
+          rpk topic create $$t -p 3 -r 1 -X brokers=redpanda:9092 || true
+        done &&
+        rpk topic list -X brokers=redpanda:9092
+    networks: [inscripcion]
+
+  # api:            # fase 3 (FastAPI, puerto 8000)
+  # enroll-worker:  # fase 3 (confirmacion contra Mongo)
+  # lake-worker:    # fase 6 (bronce -> plata -> oro con DuckDB)
+  # web:            # fase 5 (Next.js, puerto 3000)
+
+networks:
+  inscripcion:
+    driver: bridge
+
+volumes:
+  mongo-data:
+  redis-data:
+  redpanda-data:
+  minio-data:

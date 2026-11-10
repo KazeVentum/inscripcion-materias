@@ -39,7 +39,7 @@ Hoy el estudiante inscribe con un Excel de NRC sin cupos ni validación previa.
 ## Fases
 
 1. Plan + `CLAUDE.md` + subagentes. ✅
-2. Infra Docker + datos sintéticos cargados.
+2. Infra Docker + datos sintéticos cargados. ✅
 3. Backend con inscripción atómica y eventos.
 4. Brief de diseño → sistema de diseño en Storybook.
 5. Pantallas del estudiante con cupos en vivo.
@@ -72,16 +72,26 @@ Redpanda en modo dev (`--smp 1 --memory 512M --overprovisioned`).
 
 ### Flujo de inscripción (HU4)
 
-1. `POST /inscripciones` → valida prerrequisitos y cruce (Redis `ocupado:*`).
-2. Script **Lua atómico** en Redis: si `cupos:{periodo}:{nrc} > 0` → `DECR`, crea
-   `reserva:{estudianteId}:{nrc}` con TTL 300 s y agrega los bloques a `ocupado:{estudianteId}`.
-   Si no hay cupo → responde `409` con el NRC alternativo más cercano.
-3. Publica `inscripcion.intento` en Redpanda (siempre, con su resultado).
-4. `enroll-worker` consume, confirma contra el sistema académico simulado (Mongo),
-   escribe `inscripciones` con estado `confirmada` y borra la reserva. Si falla,
-   devuelve el cupo (`INCR`) y marca `rechazada`.
-5. Reserva expirada sin confirmar → conciliación devuelve el cupo.
-6. Cada cambio de cupo se publica en Redis Pub/Sub `cupos:{periodo}` → la API lo emite
+1. `POST /inscripciones` → valida prerrequisitos en la API (dato estable, Mongo).
+2. Script **Lua atómico** en Redis (un solo `EVALSHA`; nada de leer-y-escribir desde Python).
+   En orden, y abortando sin escribir nada al primer fallo:
+   - `cupos:{periodo}:{nrc}` debe existir (si no → `error`).
+   - Ninguna entrada de `ocupado:{estudianteId}` con la misma `materiaId` (→ `ya_inscrita`).
+   - Ningún bloque de `ocupado:{estudianteId}` cruza con los del NRC (`cjson.decode`; → `cruce`).
+     Así dos solicitudes simultáneas del mismo estudiante no pueden dejar un cruce.
+   - `cupos > 0` (→ `sin_cupo`, la API responde `409` con el NRC alternativo más cercano).
+   - `DECR cupos`, `HSET ocupado:{est} {nrc} {"materiaId","bloques"}`,
+     `SET reserva:{est}:{nrc}` con TTL `RESERVA_TTL_S` y
+     `ZADD reservas:pendientes {vencimientoMs} "{est}|{nrc}"`.
+3. Publica en `inscripcion.intentos` (siempre, con su resultado). Clave Kafka = `estudianteId`.
+4. `enroll-worker` consume, confirma contra el sistema académico simulado (Mongo) con
+   `_id = "{periodo}|{est}|{nrc}"` (upsert idempotente), estado `confirmada`, borra la
+   reserva y su miembro de `reservas:pendientes`. Si falla: estado `rechazada` y devolución.
+5. **Devolución de cupo** (rechazo, cancelación o conciliación) también en Lua:
+   `INCR cupos` sin superar `cupototal:{periodo}:{nrc}`, `HDEL ocupado`, `DEL reserva`, `ZREM`.
+6. Conciliación cada 30 s en `enroll-worker`: `ZRANGEBYSCORE reservas:pendientes -inf {ahora}`
+   → si no hay inscripción confirmada en Mongo, devuelve el cupo.
+7. Cada cambio de cupo se publica en Redis Pub/Sub `cupos:{periodo}` → la API lo emite
    por **SSE** (`GET /stream/cupos`) a la UI.
 
 ### Tópicos Redpanda
@@ -144,8 +154,27 @@ NRC de ejemplo (el horario va embebido):
 | Clave | Valor | Uso |
 | --- | --- | --- |
 | `cupos:{periodo}:{nrc}` | entero, cupos libres | descuento atómico (Lua) |
-| `ocupado:{estudianteId}` | hash/set de bloques tomados | filtro de cruces en ms |
-| `reserva:{estudianteId}:{nrc}` | reserva temporal, TTL 300 s | no perder el cupo mientras se confirma |
+| `cupototal:{periodo}:{nrc}` | entero, cupo total | tope al devolver cupos |
+| `ocupado:{estudianteId}` | hash: campo `nrc` → JSON `{"materiaId", "bloques": [...]}` | filtro de cruces y de materia repetida en ms |
+| `reserva:{estudianteId}:{nrc}` | reserva temporal, TTL `RESERVA_TTL_S` (300 s) | no perder el cupo mientras se confirma |
+| `reservas:pendientes` | ZSET `"{est}\|{nrc}"`, score = vencimiento (ms) | conciliar reservas vencidas |
+
+`make seed` borra y recarga todas estas claves; no se ejecuta con tráfico de inscripción activo.
+
+### Inscripciones
+
+`_id = "{periodo}|{estudianteId}|{nrc}"`. Estados: `reservada → confirmada | rechazada`,
+`confirmada → cancelada`. Campos: `estudianteId`, `nrc`, `materiaId`, `periodo`, `estado`,
+`creadaEn`, `actualizadaEn` (UTC). Un estudiante no tiene dos inscripciones activas de la
+misma materia.
+
+### Login simulado (Entra ID)
+
+`POST /api/v1/auth/login` con `estudianteId` (o correo sintético) y `DEMO_PASSWORD`,
+igual para todos los estudiantes sintéticos. Devuelve JWT HS256 (`JWT_SECRET`, expira
+en `JWT_TTL_MIN`). Demos: `est-000001` (1.er semestre), `est-000002` (clase MAR/JUE 20:30,
+HU3), `est-000003` (6.º), `est-000004` (9.º, habilitada para Práctica), `est-000005` (rezago).
+`franja` usa los valores `mañana | tarde | noche`.
 
 ### Data lake (MinIO)
 
