@@ -62,7 +62,7 @@ export function TarjetaInscrita({ item, onCancelar, conTitulo = false }: Tarjeta
         )}
       </div>
       <p className="m-0 mt-1 text-compact font-semibold tabular">{horarioLegible(item.bloques)}</p>
-      <p className="m-0 text-[13px] leading-[18px] text-text-2">
+      <p className="m-0 text-meta text-text-2">
         {virtual ? null : <span className="tabular">{salonesLegibles(item.bloques)}, </span>}
         {MODALIDAD[item.modalidad]}, {item.sede}. {item.docente}
       </p>

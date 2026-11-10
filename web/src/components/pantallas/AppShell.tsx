@@ -56,7 +56,7 @@ function Encabezado({ estado }: { estado: ReactNode }) {
   return (
     <header className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 pt-3 pb-1 lg:flex-nowrap lg:gap-x-6 lg:border-b lg:border-border lg:bg-surface lg:px-8 lg:py-2">
       <div className="min-w-0 flex-1 lg:flex-none">
-        <p className="m-0 font-head text-[15px] leading-5 font-bold tracking-[0.01em] text-primary-ink">
+        <p className="m-0 font-head text-compact font-bold tracking-[0.01em] text-primary-ink">
           UNIMINUTO
         </p>
         <p className="m-0 truncate text-meta text-text-3 tabular">

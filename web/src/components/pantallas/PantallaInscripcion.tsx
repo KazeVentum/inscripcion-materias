@@ -118,7 +118,11 @@ export function PantallaInscripcion() {
   };
   const verOtros = (materiaId: string) => {
     setPestana("materias");
-    document.getElementById(`materia-${materiaId}`)?.scrollIntoView({ block: "start" });
+    // focus() lleva la vista y el foco de teclado al primer grupo disponible de la materia.
+    window.requestAnimationFrame(() => {
+      const zona = document.getElementById(`materia-${materiaId}`)?.parentElement;
+      zona?.querySelector<HTMLElement>("button[aria-pressed]:not(:disabled)")?.focus();
+    });
   };
 
   const materias = materiasQ.data;
@@ -303,8 +307,8 @@ export function PantallaInscripcion() {
       >
         {elegido ? (
           <>
-            <p className="m-0 truncate text-[15px] leading-5 font-bold">{elegido.titulo}</p>
-            <p className="m-0 truncate text-[13px] leading-[18px] text-text-2 tabular">
+            <p className="m-0 truncate text-compact font-bold">{elegido.titulo}</p>
+            <p className="m-0 truncate text-meta text-text-2 tabular">
               {elegido.nrc}, {horarioLegible(elegido.bloques)}
             </p>
           </>

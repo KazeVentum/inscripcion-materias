@@ -94,7 +94,7 @@ export function PantallaHorario() {
             accion={
               <Link
                 href="/inscripcion"
-                className="inline-flex h-12 items-center rounded-control bg-primary px-5 text-[15px] font-semibold text-on-primary shadow-[var(--button-sheen)]"
+                className="inline-flex h-12 items-center rounded-control bg-primary px-5 text-compact font-semibold text-on-primary shadow-[var(--button-sheen)]"
               >
                 Ir a inscribir
               </Link>

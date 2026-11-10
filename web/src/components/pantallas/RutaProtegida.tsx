@@ -26,10 +26,13 @@ export function RutaProtegida({ children }: { children: ReactNode }) {
 
   if (!sesion) {
     return (
-      <div role="status" aria-label="Cargando" className="grid gap-4 p-6">
+      <main className="grid gap-4 p-6" aria-busy="true">
+        <p role="status" className="sr-only">
+          Cargando
+        </p>
         <Skeleton className="h-6 w-40" />
         <Skeleton className="h-40 w-full max-w-[640px]" />
-      </div>
+      </main>
     );
   }
   return <>{children}</>;
