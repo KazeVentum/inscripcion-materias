@@ -10,6 +10,7 @@ import { Campo } from "@/components/ui/Campo";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { ApiError, ErrorRed, api } from "@/lib/api/cliente";
 import { guardarSesion, useSesion } from "@/lib/api/sesion";
+import { destinoTrasLogin } from "@/lib/destino";
 import { useAhora } from "@/lib/useAhora";
 
 const DEMOS = [
@@ -19,11 +20,12 @@ const DEMOS = [
   { id: "est-000004", nota: "9.º, habilitada para práctica" },
   { id: "est-000005", nota: "con rezago" },
   { id: "est-000006", nota: "3.er semestre, jornada tarde" },
+  { id: "coord-0001", nota: "coordinación, analítica de la oferta" },
 ] as const;
 
 /** Solo rutas internas: evita redirigir a otro sitio con ?siguiente=. */
 export function destinoSeguro(siguiente: string | null): string {
-  return siguiente && /^\/(?![/\\])/.test(siguiente) ? siguiente : "/inscripcion";
+  return destinoTrasLogin(siguiente, "estudiante");
 }
 
 export function PantallaLogin() {
@@ -37,11 +39,11 @@ export function PantallaLogin() {
   const [errorGeneral, setErrorGeneral] = useState<string | null>(null);
   const [bloqueadoHasta, setBloqueadoHasta] = useState(0);
   const ahora = useAhora(1000);
-  const destino = destinoSeguro(params.get("siguiente"));
+  const siguiente = params.get("siguiente");
 
   useEffect(() => {
-    if (sesion) router.replace(destino);
-  }, [sesion, router, destino]);
+    if (sesion) router.replace(destinoTrasLogin(siguiente, sesion.rol));
+  }, [sesion, router, siguiente]);
 
   const espera = Math.max(0, Math.ceil((bloqueadoHasta - ahora) / 1000));
 
@@ -59,7 +61,7 @@ export function PantallaLogin() {
         rol: r.rol ?? "estudiante",
         expiraEn: Date.now() + r.expiraEnS * 1000,
       });
-      router.replace(destino);
+      router.replace(destinoTrasLogin(siguiente, r.rol ?? "estudiante"));
     } catch (err) {
       setEnviando(false);
       if (err instanceof ApiError && err.status === 401) {

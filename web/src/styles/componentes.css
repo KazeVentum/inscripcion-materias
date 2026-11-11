@@ -175,3 +175,32 @@
     opacity: 0;
   }
 }
+
+/* ------------------------------------------------------- analítica (sillas) */
+.silla-ocupacion {
+  flex: 1 1 0;
+  min-width: 0;
+  border-radius: var(--r-seat);
+  background: var(--seat-taken);
+}
+.silla-ocupacion[data-ocupada="true"] {
+  background: var(--data-5);
+}
+.silla-ocupacion[data-lleno="true"] {
+  background: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent-ink);
+}
+.barra-ocupacion-continua {
+  border-radius: var(--r-seat);
+  background: var(--seat-taken);
+  overflow: hidden;
+}
+.barra-ocupacion-continua > span {
+  display: block;
+  height: 100%;
+  background: var(--data-5);
+}
+.barra-ocupacion-continua[data-lleno="true"] > span {
+  background: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent-ink);
+}

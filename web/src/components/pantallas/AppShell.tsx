@@ -7,15 +7,20 @@ import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { IconButton } from "@/components/ui/IconButton";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { usePerfil } from "@/lib/api/hooks";
+import { usePerfil, usePerfilCoordinador } from "@/lib/api/hooks";
 import { cerrarSesion } from "@/lib/api/sesion";
 import { cn } from "@/lib/cn";
 import { ventanaJornada } from "@/lib/horario";
+import type { Rol } from "@/lib/tipos";
 import { RutaProtegida } from "./RutaProtegida";
 
 const ENLACES = [
   { href: "/inscripcion", texto: "Inscripción", icono: CalendarCheck },
   { href: "/horario", texto: "Mi horario", icono: CalendarDays },
+] as const;
+
+/** El enlace de analítica solo existe en la cabecera del coordinador. */
+const ENLACES_COORDINACION = [
   { href: "/coordinacion/analitica", texto: "Analítica", icono: BarChart3 },
 ] as const;
 
@@ -27,14 +32,22 @@ export interface AppShellProps {
   franja?: ReactNode;
   /** Escritorio: ocupa el alto de la ventana y el contenido gestiona su scroll. */
   ajustado?: boolean;
+  /** Rol que puede ver la pantalla; con otro rol se redirige a su inicio. */
+  rol?: Rol;
 }
 
 /** Encabezado, navegación y guardia de sesión comunes a las pantallas autenticadas. */
-export function AppShell({ children, estado, franja, ajustado = false }: AppShellProps) {
+export function AppShell({
+  children,
+  estado,
+  franja,
+  ajustado = false,
+  rol = "estudiante",
+}: AppShellProps) {
   return (
-    <RutaProtegida>
+    <RutaProtegida rol={rol}>
       <div className={cn("min-h-dvh bg-bg text-text", ajustado && "lg:flex lg:h-dvh lg:flex-col")}>
-        <Encabezado estado={estado} />
+        {rol === "coordinador" ? <EncabezadoCoordinacion /> : <Encabezado estado={estado} />}
         {franja}
         {children}
       </div>
@@ -42,17 +55,60 @@ export function AppShell({ children, estado, franja, ajustado = false }: AppShel
   );
 }
 
-function Encabezado({ estado }: { estado: ReactNode }) {
-  const perfil = usePerfil();
-  const ruta = usePathname();
+function useSalir() {
   const router = useRouter();
   const qc = useQueryClient();
-
-  const salir = () => {
+  return () => {
     cerrarSesion();
     qc.clear();
     router.replace("/login");
   };
+}
+
+/** Cabecera propia de coordinación: sin cupos en vivo ni jornada de estudiante. */
+function EncabezadoCoordinacion() {
+  const perfil = usePerfilCoordinador();
+  const ruta = usePathname();
+  const salir = useSalir();
+  return (
+    <header className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 pt-3 pb-1 lg:flex-nowrap lg:gap-x-6 lg:border-b lg:border-border lg:bg-surface lg:px-8 lg:py-2">
+      <div className="min-w-0 flex-1 lg:flex-none">
+        <p className="m-0 font-head text-compact font-bold tracking-[0.01em] text-primary-ink">
+          UNIMINUTO
+        </p>
+        <p className="m-0 text-meta text-text-3">
+          {perfil.data ? `${perfil.data.nombre} · ` : ""}
+          Coordinación · Ingeniería de Sistemas
+        </p>
+      </div>
+      <nav
+        aria-label="Principal"
+        className="order-last -mx-1 flex w-full gap-1 overflow-x-auto pb-1 lg:order-none lg:mx-0 lg:w-auto lg:flex-1 lg:overflow-visible lg:pb-0"
+      >
+        {ENLACES_COORDINACION.map(({ href, texto, icono: Icono }) => (
+          <Link
+            key={href}
+            href={href}
+            aria-current={ruta === href ? "page" : undefined}
+            className="inline-flex h-11 shrink-0 items-center gap-2 rounded-control bg-primary-soft px-3 text-compact font-semibold text-primary-ink"
+          >
+            <Icono aria-hidden="true" className="size-[18px]" />
+            {texto}
+          </Link>
+        ))}
+      </nav>
+      <div className="flex items-center gap-1">
+        <ThemeToggle />
+        <IconButton etiqueta="Cerrar sesión" icono={<LogOut />} onClick={salir} />
+      </div>
+    </header>
+  );
+}
+
+function Encabezado({ estado }: { estado: ReactNode }) {
+  const perfil = usePerfil();
+  const ruta = usePathname();
+  const salir = useSalir();
 
   return (
     <header className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 pt-3 pb-1 lg:flex-nowrap lg:gap-x-6 lg:border-b lg:border-border lg:bg-surface lg:px-8 lg:py-2">

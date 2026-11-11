@@ -144,7 +144,7 @@ export function matrizOcupacion(items: readonly OcupacionFranjaItem[]): MatrizOc
     (a, b) => (ORDEN_FRANJA[a] ?? 9) - (ORDEN_FRANJA[b] ?? 9),
   );
   const sedes = [...new Set(items.map((i) => i.sede))].sort((a, b) => a.localeCompare(b, "es"));
-  const mapa = new Map(items.map((i) => [`${i.franja}|${i.sede}`, i] as const));
+  const mapa = new Map<string, OcupacionFranjaItem>(items.map((i) => [`${i.franja}|${i.sede}`, i]));
   return { franjas, sedes, celda: (f, s) => mapa.get(`${f}|${s}`) };
 }
 
