@@ -16,6 +16,7 @@ import logging
 import re
 import time
 from collections import defaultdict
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -100,7 +101,7 @@ class Acumulador:
         if not self.mensajes:
             self.desde = time.monotonic()
         for m in msgs:
-            self.mensajes.append(Mensaje(m.topic, m.partition, m.offset, m.value))
+            self.mensajes.append(Mensaje(m.topic, m.partition, m.offset, m.value or b""))
         self.offsets[tp] = max(self.offsets.get(tp, -1), msgs[-1].offset + 1)
 
     def listo(self, lote_max: int, lote_max_s: float) -> bool:
@@ -130,6 +131,62 @@ def nuevo_consumidor(s: Settings) -> AIOKafkaConsumer:
     )
 
 
+BACKOFF_MAX_S = 30.0
+
+
+def espera_backoff(fallos: int) -> float:
+    """Espera creciente (1, 2, 4... s) con tope tras `fallos` escrituras fallidas seguidas."""
+    return float(min(2 ** max(fallos - 1, 0), BACKOFF_MAX_S)) if fallos else 0.0
+
+
+@dataclass
+class Estado:
+    fallos: int = 0  # escrituras fallidas seguidas del lote pendiente
+    total: int = 0  # mensajes escritos a bronce
+
+
+async def ciclo(
+    consumidor: Any,
+    acc: Acumulador,
+    escribir: Callable[[list[Mensaje]], int],
+    estado: Estado,
+    s: Settings,
+    *,
+    hasta_vaciar: bool = False,
+    dormir: Callable[[float], Awaitable[None]] = asyncio.sleep,
+) -> bool:
+    """Una vuelta: lee (salvo que haya un lote que no se pudo escribir), escribe y confirma.
+
+    Si `escribir` falla, el lote queda en el buffer y NO se vuelve a leer hasta escribirlo
+    (el buffer no crece); entre intentos espera con backoff creciente. Devuelve si llegaron
+    mensajes nuevos.
+    """
+    lote: dict[TopicPartition, list[Any]] = {}
+    if estado.fallos:
+        await dormir(espera_backoff(estado.fallos))
+    else:
+        lote = await consumidor.getmany(timeout_ms=500, max_records=s.lote_max)
+        for tp, msgs in lote.items():
+            if msgs:
+                acc.agregar(tp, msgs)
+    if acc.listo(s.lote_max, 0 if estado.fallos or (hasta_vaciar and not lote) else s.lote_max_s):
+        try:
+            n = await asyncio.to_thread(escribir, acc.mensajes)
+            # commit SOLO despues de escribir (at-least-once)
+            await consumidor.commit(dict(acc.offsets))
+        except Exception:
+            estado.fallos += 1
+            log.exception(
+                "fallo al escribir el lote en bronce (intento %d); se reintenta", estado.fallos
+            )
+            return bool(lote)
+        estado.fallos = 0
+        estado.total += len(acc.mensajes)
+        log.info("bronce: %d mensajes en %d objetos", len(acc.mensajes), n)
+        acc.vaciar()
+    return bool(lote)
+
+
 async def ingerir(
     s: Settings,
     parar: asyncio.Event,
@@ -147,41 +204,32 @@ async def ingerir(
     await consumidor.start()
     tarea = asyncio.create_task(_latido(s.heartbeat_file, parar)) if heartbeat else None
     acc = Acumulador()
-    total = 0
+    estado = Estado()
     vacios = 0
     log.info("ingesta a bronce lista (grupo %s, topics %s)", s.grupo, ",".join(s.topics))
+
+    def escribir(mensajes: list[Mensaje]) -> int:
+        return escribir_lote(c, s, mensajes)
+
     try:
         while not parar.is_set():
-            lote = await consumidor.getmany(timeout_ms=500, max_records=s.lote_max)
-            for tp, msgs in lote.items():
-                if msgs:
-                    acc.agregar(tp, msgs)
+            llegaron = await ciclo(consumidor, acc, escribir, estado, s, hasta_vaciar=hasta_vaciar)
+            if hasta_vaciar and estado.fallos >= 5:
+                raise RuntimeError("no se pudo escribir a bronce tras 5 intentos")
             if hasta_vaciar:
-                vacios = 0 if lote else vacios + 1
+                vacios = 0 if llegaron else vacios + 1
                 if vacios >= 3 and not acc.mensajes:
                     break
-            if acc.listo(s.lote_max, 0 if hasta_vaciar and not lote else s.lote_max_s):
-                try:
-                    n = await asyncio.to_thread(escribir_lote, c, s, acc.mensajes)
-                    # commit SOLO despues de escribir (at-least-once)
-                    await consumidor.commit(dict(acc.offsets))
-                except Exception:
-                    log.exception("fallo al escribir el lote en bronce; se reintenta")
-                    await asyncio.sleep(2)
-                    continue
-                total += len(acc.mensajes)
-                log.info("bronce: %d mensajes en %d objetos", len(acc.mensajes), n)
-                acc.vaciar()
         if acc.mensajes:  # cierre ordenado: no perder el lote en curso
             await asyncio.to_thread(escribir_lote, c, s, acc.mensajes)
             await consumidor.commit(dict(acc.offsets))
-            total += len(acc.mensajes)
+            estado.total += len(acc.mensajes)
     finally:
         parar.set()
         if tarea is not None:
             await tarea
         await consumidor.stop()
-    return total
+    return estado.total
 
 
 async def lag(s: Settings) -> int:
@@ -200,10 +248,27 @@ async def lag(s: Settings) -> int:
         if not tps:
             return 0
         fines = await consumidor.end_offsets(tps)
+        inicios = await consumidor.beginning_offsets(tps)
         pendiente = 0
         for tp in tps:
             conf = await consumidor.committed(tp)
-            pendiente += fines[tp] - (conf or 0)
+            # sin offset confirmado el grupo arrancaria en el inicio del log (retencion), no en 0
+            base = inicios[tp] if conf is None else conf
+            pendiente += max(fines[tp] - base, 0)
         return pendiente
     finally:
         await consumidor.stop()
+
+
+async def grupo_activo(s: Settings) -> bool:
+    """True si el grupo de bronce tiene miembros conectados (el lake-worker esta vivo)."""
+    from aiokafka.admin import AIOKafkaAdminClient
+
+    admin = AIOKafkaAdminClient(bootstrap_servers=s.kafka_brokers)
+    await admin.start()
+    try:
+        grupos = await admin.describe_consumer_groups([s.grupo])
+        # cada respuesta trae `groups`: (error, grupo, estado, tipo, protocolo, miembros, ...)
+        return any(g[5] for r in grupos for g in r.groups)
+    finally:
+        await admin.close()

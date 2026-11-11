@@ -67,3 +67,57 @@ def test_acumulador_solo_confirma_offsets_del_lote_pendiente() -> None:
     assert acc.listo(lote_max=10, lote_max_s=0)  # por tiempo
     acc.vaciar()
     assert not acc.mensajes and not acc.offsets
+
+
+class _Consumidor:
+    """Doble de AIOKafkaConsumer: cuenta lecturas y commits."""
+
+    def __init__(self) -> None:
+        self.lecturas = 0
+        self.commits: list[dict[TopicPartition, int]] = []
+
+    async def getmany(
+        self, timeout_ms: int, max_records: int
+    ) -> dict[TopicPartition, list[object]]:
+        self.lecturas += 1
+        o = self.lecturas
+        tp = TopicPartition("inscripcion.intentos", 0)
+        return {tp: [SimpleNamespace(topic=tp.topic, partition=0, offset=o, value=evento())]}
+
+    async def commit(self, offsets: dict[TopicPartition, int]) -> None:
+        self.commits.append(offsets)
+
+
+def test_si_escribir_falla_el_buffer_no_crece_y_el_commit_va_despues() -> None:
+    import asyncio
+
+    from lake.bronce import Estado, ciclo, espera_backoff
+    from lake.config import Settings
+
+    s = Settings(hash_salt="x", lote_max=1, lote_max_s=0)
+    cons = _Consumidor()
+    acc = Acumulador()
+    estado = Estado()
+    intentos: list[int] = []
+    esperas: list[float] = []
+
+    def escribir(msgs: list[Mensaje]) -> int:
+        intentos.append(len(msgs))
+        if len(intentos) <= 3:
+            raise OSError("minio caido")
+        return 1
+
+    async def dormir(seg: float) -> None:
+        esperas.append(seg)
+
+    async def correr() -> None:
+        for _ in range(6):
+            await ciclo(cons, acc, escribir, estado, s, dormir=dormir)
+
+    asyncio.run(correr())
+    assert intentos[:4] == [1, 1, 1, 1]  # mismo lote de 1 mensaje, nunca crecio
+    assert cons.lecturas == 3  # 1 antes del fallo + 2 tras recuperarse; sin leer durante el fallo
+    assert esperas[:3] == [1.0, 2.0, 4.0]  # backoff creciente
+    assert [c[TopicPartition("inscripcion.intentos", 0)] for c in cons.commits] == [2, 3, 4]
+    assert estado.fallos == 0 and estado.total == 3 and not acc.mensajes
+    assert espera_backoff(50) == 30.0

@@ -19,13 +19,25 @@ log = logging.getLogger("lake.cli")
 
 
 async def _bronce_al_dia(s: Settings, espera_s: float) -> None:
-    """Espera a que el lake-worker deje el lag en 0; si no hay worker, ingiere aqui mismo."""
-    limite = time.monotonic() + espera_s
-    while time.monotonic() < limite:
-        if await bronce.lag(s) == 0:
-            return
-        await asyncio.sleep(1.5)
-    log.info("el lake-worker no alcanzo el lag 0; se ingiere desde este proceso")
+    """Deja bronce al dia.
+
+    Con el lake-worker vivo (miembro del grupo `lake-bronce`) solo espera a que el lag llegue
+    a 0 y, si no llega, falla: ingerir desde aqui con el mismo grupo provocaria un rebalanceo
+    y competiria por los offsets. Sin worker, ingiere en este proceso.
+    """
+    if await bronce.grupo_activo(s):
+        limite = time.monotonic() + espera_s
+        pendiente = await bronce.lag(s)
+        while pendiente and time.monotonic() < limite:
+            await asyncio.sleep(1.5)
+            pendiente = await bronce.lag(s)
+        if pendiente:
+            raise SystemExit(
+                f"el lake-worker sigue vivo y quedan {pendiente} mensajes sin ingerir tras "
+                f"{espera_s:.0f} s; reintente con --espera-s mayor o detenga el lake-worker"
+            )
+        return
+    log.info("no hay lake-worker en el grupo; se ingiere desde este proceso")
     await bronce.ingerir(s, asyncio.Event(), heartbeat=False, hasta_vaciar=True)
 
 
