@@ -43,7 +43,7 @@ Hoy el estudiante inscribe con un Excel de NRC sin cupos ni validación previa.
 3. Backend con inscripción atómica y eventos. ✅
 4. Brief de diseño → sistema de diseño en Storybook. ✅
 5. Pantallas del estudiante con cupos en vivo. ✅
-6. Data lake y página de analítica.
+6. Data lake y página de analítica. ✅
 7. Pruebas de concurrencia y carga + capturas.
 8. README, diagrama y guion de demo de 5 minutos.
 
@@ -265,6 +265,11 @@ con DuckDB + `httpfs` sobre MinIO. `mem_limit` 384 MB, `read_only`, `cap_drop AL
 - Ocupación actual = `cupoTotal − cupos libres en Redis` al recalcular (snapshot en `dim_nrc`);
   el momento de llenado se infiere con la ocupación inicial = ocupados − neto de los eventos.
   Tras un `make seed` hay que correr `make lake-limpiar`, o los eventos viejos mezclan estados.
+- Publicación: plata y oro se calculan en `_stg/<id>/` y solo se publican si la cuadratura da
+  OK; si no, queda el oro anterior. Bronce se cuenta por líneas físicas, independiente del parser.
+- La API lee MinIO con el usuario `api-lector` (solo lectura sobre `gold`), nunca con root.
+- **Límite conocido:** plata/oro se recalculan completos (DuckDB 192 MB, temporales ≤ 128 MB);
+  techo del orden de 1–2 millones de eventos. En producción: plata incremental por `fecha=`.
 
 ## Datos de referencia (`data/reference/`)
 
