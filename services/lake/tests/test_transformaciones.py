@@ -260,3 +260,24 @@ def test_recalcular_es_idempotente(lake: tuple[Settings, Any]) -> None:
     a = correr(s, con)
     b = correr(s, con)
     assert a["plata"] == b["plata"] and a["oro"] == b["oro"]
+
+
+def test_lineas_que_duckdb_descarta_se_cuentan_como_invalidas(lake: tuple[Settings, Any]) -> None:
+    s, con = lake
+    buenas = [json.dumps(e) for e in EVENTOS]
+    carpeta = Path(s.esquema) / s.bucket_bronce / "tipo=intento" / "fecha=2026-11-09"
+    carpeta.mkdir(parents=True, exist_ok=True)
+    crudo = "\n".join(buenas) + "\n"
+    crudo += "con\x01separador\n"  # el delimitador interno parte la linea: read_csv la descarta
+    crudo += "\n"  # mensaje vacio
+    crudo += '{"eventId": "' + "x" * (5 * 1024 * 1024) + '"}\n'  # supera max_line_size
+    crudo += "basura\n"
+    (carpeta / "raro.jsonl").write_text(crudo, encoding="utf-8")
+    val = correr(s, con)
+    p = val["plata"]
+    assert val["bronce"]["lineas"] == len(buenas) + 4  # conteo fisico independiente
+    assert p["invalidos"] == 4
+    assert p["invalidosPorMotivo"]["mensaje_vacio"] == 1
+    assert p["invalidosPorMotivo"]["json_invalido"] == 1
+    assert p["invalidosPorMotivo"]["linea_ilegible"] == 2
+    assert val["cuadra"], [c for c in val["checks"] if not c["ok"]]

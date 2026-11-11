@@ -3,7 +3,15 @@
 Todo el parseo se hace en SQL (DuckDB) sobre las lineas crudas de bronce, de modo que una
 linea corrupta no rompe el job: se cuenta como invalida, con su motivo.
 
-Cuadratura: lineas_bronce = filas_plata + duplicados + invalidos.
+Cuadratura: lineas_bronce = filas_plata + duplicados + invalidos, donde `lineas_bronce` es un
+conteo FISICO e independiente (saltos de linea de los .jsonl, leidos con `read_text`) y no
+lo que `read_csv` logro parsear. Las lineas que DuckDB no puede leer (byte \\x01, mas de 4 MB)
+se cuentan como invalidas con motivo `linea_ilegible`; los mensajes vacios, `mensaje_vacio`.
+
+Techo de volumen: plata y oro se recalculan COMPLETOS desde todo bronce en cada ciclo, con
+`memory_limit` 192 MB y spill a disco acotado (128 MB en /tmp). Con eventos de ~400 B eso
+aguanta del orden de 1 a 2 millones de lineas en bronce; mas alla hay que pasar a plata
+incremental por particion `fecha=` (no implementado: fuera del alcance de la simulacion).
 """
 
 from __future__ import annotations
@@ -87,6 +95,18 @@ def hay_bronce(con: Any, s: Settings) -> bool:
     return bool(n)
 
 
+def lineas_fisicas(con: Any, s: Settings) -> int:
+    """Lineas fisicas de bronce (conteo de saltos de linea), independiente del parser CSV."""
+    if not hay_bronce(con, s):
+        return 0
+    return int(
+        con.execute(
+            "SELECT coalesce(sum(length(content) - length(replace(content, chr(10), ''))), 0) "
+            f"FROM read_text('{s.esquema}{s.bucket_bronce}/tipo=*/fecha=*/*.jsonl')"
+        ).fetchone()[0]
+    )
+
+
 def construir(con: Any, s: Settings) -> dict[str, Any]:
     """Crea las tablas temporales `ev` (eventos validos y unicos) y los contadores."""
     con.execute("SET TimeZone='UTC'")  # los instantes de ocurridoEn se guardan en UTC
@@ -94,22 +114,23 @@ def construir(con: Any, s: Settings) -> dict[str, Any]:
         origen = (
             f"read_csv('{s.esquema}{s.bucket_bronce}/tipo=*/fecha=*/*.jsonl', "
             f"columns={{'linea': 'VARCHAR'}}, delim='{_SEP}', quote='', escape='', "
-            "header=false, auto_detect=false, max_line_size=4194304, ignore_errors=true)"
+            "header=false, auto_detect=false, max_line_size=4194304, ignore_errors=true, "
+            "filename=true)"
         )
     else:
-        origen = "(SELECT NULL::VARCHAR AS linea WHERE false)"
+        origen = "(SELECT NULL::VARCHAR AS linea, NULL::VARCHAR AS filename WHERE false)"
     con.execute(
         f"""CREATE OR REPLACE TEMP TABLE crudo AS
-        SELECT row_number() OVER () AS rn, linea FROM {origen}"""
+        SELECT row_number() OVER () AS rn, linea, filename AS archivo FROM {origen}"""
     )
     con.execute(
         """CREATE OR REPLACE TEMP TABLE parseado AS
-        SELECT rn, CASE WHEN json_type(j0) = 'OBJECT' THEN j0 END AS j
-        FROM (SELECT rn, TRY_CAST(linea AS JSON) AS j0 FROM crudo)"""
+        SELECT rn, archivo, linea, CASE WHEN json_type(j0) = 'OBJECT' THEN j0 END AS j
+        FROM (SELECT rn, archivo, linea, TRY_CAST(linea AS JSON) AS j0 FROM crudo)"""
     )
     con.execute(
         """CREATE OR REPLACE TEMP TABLE parcial AS
-        SELECT rn, j IS NULL AS no_json,
+        SELECT rn, archivo, j IS NULL AS no_json, coalesce(trim(linea), '') = '' AS vacio,
           json_extract_string(j, '$.eventId') AS eventId,
           json_extract_string(j, '$.tipo') AS tipo,
           TRY_CAST(json_extract_string(j, '$.ocurridoEn') AS TIMESTAMPTZ)::TIMESTAMP AS ocurridoEn,
@@ -130,6 +151,7 @@ def construir(con: Any, s: Settings) -> dict[str, Any]:
     con.execute(
         f"""CREATE OR REPLACE TEMP TABLE clasificado AS
         SELECT *, CASE
+          WHEN vacio THEN 'mensaje_vacio'
           WHEN no_json THEN 'json_invalido'
           WHEN eventId IS NULL OR eventId = '' THEN 'sin_eventId'
           WHEN tipo IS NULL OR tipo NOT IN ({_lista(TIPOS)}) THEN 'tipo_desconocido'
@@ -146,7 +168,7 @@ def construir(con: Any, s: Settings) -> dict[str, Any]:
     )
     con.execute(
         """CREATE OR REPLACE TEMP TABLE numerado AS
-        SELECT *, row_number() OVER (PARTITION BY eventId ORDER BY ocurridoEn, rn) AS orden
+        SELECT *, row_number() OVER (PARTITION BY eventId ORDER BY ocurridoEn, archivo, rn) AS orden
         FROM clasificado WHERE invalido IS NULL"""
     )
     con.execute(
@@ -169,12 +191,16 @@ def construir(con: Any, s: Settings) -> dict[str, Any]:
         WHERE e.orden = 1""",
         [s.hash_salt],
     )
-    lineas = con.execute("SELECT count(*) FROM crudo").fetchone()[0]
+    lineas = lineas_fisicas(con, s)
+    leidas = con.execute("SELECT count(*) FROM crudo").fetchone()[0]
     invalidos = dict(
         con.execute(
             "SELECT invalido, count(*) FROM clasificado WHERE invalido IS NOT NULL GROUP BY 1"
         ).fetchall()
     )
+    ilegibles = lineas - leidas  # DuckDB las descarto: se cuentan, no desaparecen
+    if ilegibles:
+        invalidos["linea_ilegible"] = ilegibles
     duplicados = con.execute("SELECT count(*) FROM numerado WHERE orden > 1").fetchone()[0]
     return {
         "lineas": lineas,
@@ -208,7 +234,7 @@ def escribir_plata(con: Any, s: Settings) -> dict[str, int]:
     """Escribe los Parquet de silver y devuelve las filas leidas de vuelta de cada uno."""
     filas: dict[str, int] = {}
     for nombre, sql in _SELECTS.items():
-        destino = f"{s.esquema}{s.bucket_plata}/{nombre}.parquet"
+        destino = f"{s.ruta_plata(nombre)}.parquet"
         con.execute(f"COPY ({sql}) TO '{destino}' (FORMAT parquet, COMPRESSION zstd)")
         filas[nombre] = con.execute(f"SELECT count(*) FROM read_parquet('{destino}')").fetchone()[0]
     return filas

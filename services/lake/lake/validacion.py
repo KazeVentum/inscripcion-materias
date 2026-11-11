@@ -30,11 +30,10 @@ def _check(nombre: str, esperado: Any, obtenido: Any) -> dict[str, Any]:
 def sin_datos_personales(con: Any, s: Settings) -> int:
     """Cuenta columnas prohibidas y valores con forma de id de estudiante o correo."""
     problemas = 0
-    archivos = [(s.bucket_plata, f"{n}.parquet") for n in ARCHIVOS_PLATA] + [
-        (s.bucket_oro, f"{n}.parquet") for n in TABLAS_ORO
+    rutas = [s.ruta_plata(f"{n}.parquet") for n in ARCHIVOS_PLATA] + [
+        s.ruta_oro(f"{n}.parquet") for n in TABLAS_ORO
     ]
-    for bucket, archivo in archivos:
-        ruta = f"{s.esquema}{bucket}/{archivo}"
+    for ruta in rutas:
         cols = con.execute(f"DESCRIBE SELECT * FROM read_parquet('{ruta}')").fetchall()
         for nombre, tipo, *_ in cols:
             if str(nombre).lower() in COLUMNAS_PROHIBIDAS:
@@ -52,10 +51,10 @@ def validar(con: Any, s: Settings, plata: dict[str, Any]) -> dict[str, Any]:
     """Cruza los contadores de plata con lo que realmente hay en los Parquet de plata y oro."""
 
     def silver(nombre: str) -> str:
-        return f"read_parquet('{s.esquema}{s.bucket_plata}/{nombre}.parquet')"
+        return f"read_parquet('{s.ruta_plata(nombre)}.parquet')"
 
     def gold(nombre: str) -> str:
-        return f"read_parquet('{s.esquema}{s.bucket_oro}/{nombre}.parquet')"
+        return f"read_parquet('{s.ruta_oro(nombre)}.parquet')"
 
     def suma(columna: str, tabla: str, filtro: str = "") -> int:
         return int(_uno(con, f"SELECT coalesce(sum({columna}), 0) FROM {gold(tabla)} {filtro}"))
@@ -120,8 +119,8 @@ def validar(con: Any, s: Settings, plata: dict[str, Any]) -> dict[str, Any]:
 
 def resumen(con: Any, s: Settings) -> dict[str, Any]:
     """KPIs para la tarjeta de resumen de la pagina de analitica."""
-    p = f"{s.esquema}{s.bucket_plata}"
-    g = f"{s.esquema}{s.bucket_oro}"
+    p = s.ruta_plata().rstrip("/")
+    g = s.ruta_oro().rstrip("/")
     fila = con.execute(
         f"""SELECT count(*), count(*) FILTER (WHERE resultado='exito'),
           count(*) FILTER (WHERE resultado='sin_cupo'), count(DISTINCT estudianteHash),

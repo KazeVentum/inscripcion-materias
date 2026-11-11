@@ -16,6 +16,7 @@ def conectar(s: Settings) -> Any:
         con.execute(f"SET extension_directory='{s.duckdb_extensiones}'")
     os.makedirs(s.duckdb_tmp, exist_ok=True)
     con.execute(f"SET temp_directory='{s.duckdb_tmp}'")
+    con.execute(f"SET max_temp_directory_size='{s.duckdb_tmp_max}'")
     con.execute(f"SET memory_limit='{s.duckdb_memoria}'")
     con.execute("SET threads=2")
     con.execute("SET TimeZone='UTC'")

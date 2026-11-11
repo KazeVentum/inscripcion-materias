@@ -19,7 +19,7 @@ def _vistas(con: Any, s: Settings) -> None:
     for nombre in ("intentos", "confirmaciones", "cancelaciones", "busquedas", "dim_nrc"):
         con.execute(
             f"CREATE OR REPLACE TEMP VIEW s_{nombre} AS "
-            f"SELECT * FROM read_parquet('{s.esquema}{s.bucket_plata}/{nombre}.parquet')"
+            f"SELECT * FROM read_parquet('{s.ruta_plata(nombre)}.parquet')"
         )
 
 
@@ -201,7 +201,7 @@ def ejecutar(con: Any, s: Settings) -> dict[str, int]:
     _insatisfecha(con)
     filas: dict[str, int] = {}
     for nombre in TABLAS_ORO:
-        destino = f"{s.esquema}{s.bucket_oro}/{nombre}.parquet"
+        destino = f"{s.ruta_oro(nombre)}.parquet"
         con.execute(
             f"COPY (SELECT * FROM {nombre}) TO '{destino}' (FORMAT parquet, COMPRESSION zstd)"
         )

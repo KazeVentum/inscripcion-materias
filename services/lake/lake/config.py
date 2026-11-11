@@ -52,6 +52,7 @@ class Settings:
     duckdb_memoria: str = field(default_factory=lambda: _env("LAKE_DUCKDB_MEMORIA", "192MB"))
     duckdb_extensiones: str = field(default_factory=lambda: _env("DUCKDB_EXTENSION_DIR", ""))
     duckdb_tmp: str = field(default_factory=lambda: _env("DUCKDB_TMP_DIR", "/tmp/duckdb"))
+    duckdb_tmp_max: str = field(default_factory=lambda: _env("LAKE_DUCKDB_TMP_MAX", "128MB"))
     heartbeat_file: str = field(default_factory=lambda: _env("HEARTBEAT_FILE", "/tmp/heartbeat"))
 
     # Prefijo de las rutas de DuckDB: "s3://" en produccion; una carpeta local en pruebas
@@ -59,3 +60,12 @@ class Settings:
     bucket_bronce: str = "bronze"
     bucket_plata: str = "silver"
     bucket_oro: str = "gold"
+    # Prefijo de staging para plata/oro ("" = ruta publicada). El pipeline calcula en
+    # `_stg/<id>/` y solo publica si los conteos cuadran.
+    prefijo: str = ""
+
+    def ruta_plata(self, nombre: str = "") -> str:
+        return f"{self.esquema}{self.bucket_plata}/{self.prefijo}{nombre}"
+
+    def ruta_oro(self, nombre: str = "") -> str:
+        return f"{self.esquema}{self.bucket_oro}/{self.prefijo}{nombre}"
