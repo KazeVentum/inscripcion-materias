@@ -123,14 +123,14 @@ async def login(body: LoginIn, ctx: Ctx) -> LoginOut:
     coord = body.usuario.strip().lower()
     if coord in COORDINADORES and clave_ok:
         token, ttl = crear_token(ctx.settings, coord, ROL_COORDINADOR)
-        log.info("login coordinador=%s", coord)
+        log.info("login coordinador ok")
         return LoginOut(accessToken=token, expiraEnS=ttl, estudianteId=coord, rol="coordinador")
     est = await ctx.catalogo.buscar_para_login(ctx.db, body.usuario)
     if est is None or not clave_ok:
         ctx.limite_login.registrar_fallo(clave_limite)
         raise ApiError(401, "credenciales_invalidas", "Usuario o contraseña incorrectos")
     token, ttl = crear_token(ctx.settings, est.estudiante_id)
-    log.info("login estudiante=%s", est.estudiante_id)
+    log.info("login estudiante ok")
     return LoginOut(accessToken=token, expiraEnS=ttl, estudianteId=est.estudiante_id)
 
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -26,6 +27,8 @@ from .schemas import (
 )
 from .seguridad import coordinador_actual
 
+log = logging.getLogger("api")
+
 router = APIRouter(prefix="/coordinacion", tags=["coordinacion"])
 
 Coord = Annotated[str, Depends(coordinador_actual)]
@@ -44,7 +47,8 @@ def _lector(request: Request) -> Any:
 
 async def _generado_en(lector: Any) -> str | None:
     meta = await lector.meta()
-    return None if meta is None else str(meta.get("generadoEn"))
+    generado = None if meta is None else meta.get("generadoEn")
+    return None if generado is None else str(generado)
 
 
 @router.get("/me", response_model=CoordinadorOut, responses=_RESP, summary="Perfil del coordinador")
@@ -61,22 +65,28 @@ async def me(usuario: Coord) -> CoordinadorOut:
 async def resumen(request: Request, _: Coord) -> ResumenOut:
     lector = _lector(request)
     meta = await lector.meta()
-    if meta is None:
+    if meta is None or meta.get("generadoEn") is None:
         return ResumenOut(generadoEn=None)
-    val = meta["validacion"]
-    plata = val["plata"]
-    return ResumenOut(
-        generadoEn=str(meta["generadoEn"]),
-        **meta["resumen"],
-        validacion=ValidacionOut(
-            cuadra=val["cuadra"],
-            lineasBronce=val["bronce"]["lineas"],
-            eventosPlata=plata["eventos"],
-            duplicados=plata["duplicados"],
-            invalidos=plata["invalidos"],
-            checks=val["checks"],
-        ),
-    )
+    try:
+        datos: dict[str, Any] = dict(meta.get("resumen") or {})
+        val = meta.get("validacion")
+        validacion = None
+        if val:
+            plata = val["plata"]
+            validacion = ValidacionOut(
+                cuadra=val["cuadra"],
+                lineasBronce=val["bronce"]["lineas"],
+                eventosPlata=plata["eventos"],
+                duplicados=plata["duplicados"],
+                invalidos=plata["invalidos"],
+                checks=val["checks"],
+            )
+        return ResumenOut.model_validate(
+            {**datos, "generadoEn": str(meta["generadoEn"]), "validacion": validacion}
+        )
+    except (KeyError, TypeError, ValueError):
+        log.warning("meta de oro incompleta o con formato inesperado")
+        return ResumenOut(generadoEn=None)
 
 
 _ORDENES: dict[str, tuple[str, bool]] = {
@@ -114,7 +124,9 @@ async def demanda_nrc(
     # los valores nulos (p. ej. NRC que nunca se lleno) van al final en cualquier orden
     con_valor = [f for f in filas if f.get(campo) is not None]
     sin_valor = [f for f in filas if f.get(campo) is None]
-    con_valor.sort(key=lambda f: (f[campo], f["nrc"]) if not desc else (-f[campo], f["nrc"]))
+    con_valor = sorted(
+        con_valor, key=lambda f: (f[campo], f["nrc"]) if not desc else (-f[campo], f["nrc"])
+    )
     ordenadas = con_valor + sin_valor
     return DemandaNrcOut(
         generadoEn=await _generado_en(lector),
@@ -132,10 +144,10 @@ async def demanda_nrc(
 async def ocupacion_franja(request: Request, _: Coord) -> OcupacionFranjaOut:
     lector = _lector(request)
     filas: list[dict[str, Any]] = await lector.tabla("ocupacion_franja")
-    filas.sort(key=lambda f: (f["franja"], f["sede"]))
+    ordenadas = sorted(filas, key=lambda f: (f["franja"], f["sede"]))
     return OcupacionFranjaOut(
         generadoEn=await _generado_en(lector),
-        items=[OcupacionFranjaItem.model_validate(f) for f in filas],
+        items=[OcupacionFranjaItem.model_validate(f) for f in ordenadas],
     )
 
 
@@ -155,11 +167,13 @@ async def combinaciones(
     filas: list[dict[str, Any]] = await lector.tabla("combinaciones_nrc")
     if semestre is not None:
         filas = [f for f in filas if f["semestre"] == semestre]
-    filas.sort(key=lambda f: (-f["estudiantes"], f["programa"], f["nrcA"], f["nrcB"]))
+    ordenadas = sorted(
+        filas, key=lambda f: (-f["estudiantes"], f["programa"], f["nrcA"], f["nrcB"])
+    )
     return CombinacionesOut(
         generadoEn=await _generado_en(lector),
-        total=len(filas),
-        items=[CombinacionItem.model_validate(f) for f in filas[:limite]],
+        total=len(ordenadas),
+        items=[CombinacionItem.model_validate(f) for f in ordenadas[:limite]],
     )
 
 
@@ -196,8 +210,8 @@ async def demanda_insatisfecha(
 ) -> DemandaInsatisfechaOut:
     lector = _lector(request)
     filas: list[dict[str, Any]] = await lector.tabla("demanda_insatisfecha")
-    filas.sort(key=lambda f: (-f["sinCupo"], f["materiaId"]))
+    ordenadas = sorted(filas, key=lambda f: (-f["sinCupo"], f["materiaId"]))
     return DemandaInsatisfechaOut(
         generadoEn=await _generado_en(lector),
-        items=[DemandaInsatisfechaItem.model_validate(f) for f in filas[:limite]],
+        items=[DemandaInsatisfechaItem.model_validate(f) for f in ordenadas[:limite]],
     )

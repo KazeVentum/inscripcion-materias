@@ -357,3 +357,58 @@ def test_oro_real_si_existe(client: TestClient) -> None:
     if r.json()["generadoEn"] is None:
         pytest.skip("gold aun no existe (make simular && make lake)")
     assert r.json()["validacion"]["cuadra"] is True
+
+
+# ------------------------------------------------------------ robustez del lector
+
+
+def test_no_muta_las_tablas_cacheadas(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    franja = dict(
+        nrcs=1, cupoTotal=1, ocupados=1, cuposVacios=0, nrcLlenos=1, intentos=1, exitos=1, sinCupo=0
+    )
+    insat = dict(estudiantesAfectados=1, nrcAfectados=1, intentos=1, tasaSinCupo=0.5)
+    tablas: dict[str, list[dict[str, Any]]] = {
+        "ocupacion_franja": [
+            {"franja": "tarde", "sede": "B", **franja},
+            {"franja": "noche", "sede": "A", **franja},
+        ],
+        "demanda_insatisfecha": [
+            {"materiaId": "B", "sinCupo": 1, **insat},
+            {"materiaId": "A", "sinCupo": 5, **insat},
+        ],
+        "combinaciones_nrc": [],
+    }
+    antes = {k: [dict(f) for f in v] for k, v in tablas.items()}
+
+    class Cacheado(LectorFalso):
+        async def tabla(self, nombre: str) -> list[dict[str, Any]]:
+            return self._t.get(nombre, [])  # misma lista cada vez, como la cache real
+
+    monkeypatch.setattr(_app(client).state, "lector_oro", Cacheado(tablas, META))
+    h, _ = login(client, "coord-0001")
+    for ruta in ("/analitica/ocupacion-franja", "/analitica/demanda-insatisfecha"):
+        assert client.get(BASE + ruta, headers=h).status_code == 200
+    assert tablas == antes
+
+
+@pytest.mark.parametrize(
+    "meta",
+    [
+        {"generadoEn": None},
+        {"generadoEn": "2027-01-01T00:00:00Z"},
+        {"generadoEn": "2027-01-01T00:00:00Z", "resumen": {"eventos": 3}},
+        {"generadoEn": "2027-01-01T00:00:00Z", "validacion": {"cuadra": True}},
+        {},
+    ],
+)
+def test_meta_incompleta_no_da_500(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, meta: dict[str, Any]
+) -> None:
+    monkeypatch.setattr(_app(client).state, "lector_oro", LectorFalso({}, meta))
+    h, _ = login(client, "coord-0001")
+    r = client.get(BASE + "/analitica/resumen", headers=h)
+    assert r.status_code == 200, r.text
+    assert r.json()["generadoEn"] in (None, "2027-01-01T00:00:00Z")
+    assert r.json()["validacion"] is None
+    r = client.get(BASE + "/analitica/demanda-nrc", headers=h)
+    assert r.status_code == 200 and r.json()["generadoEn"] != "None"
