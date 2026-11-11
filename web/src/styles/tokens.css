@@ -41,6 +41,11 @@
  * @par texto --text / --sheet-bg sobre --primary
  * @par texto --text-2 / --sheet-bg sobre --surface
  * @par texto --text / --sheet-bg sobre --surface
+ * @par texto --on-data-1 / --data-1
+ * @par texto --on-data-2 / --data-2
+ * @par texto --on-data-3 / --data-3
+ * @par texto --on-data-4 / --data-4
+ * @par texto --on-data-5 / --data-5
  * @par ui --border-strong / --surface
  * @par ui --border-strong / --bg
  *
@@ -54,6 +59,8 @@
  * @par ui --seat-free / --surface
  * @par ui --danger / --surface
  * @par ui --success / --surface
+ * @par ui --accent-ink / --surface
+ * @par ui --data-5 / --surface
  */
 
 /* ------------------------------------------------------------------ claro */
@@ -91,6 +98,17 @@
   --block-enrolled-bg: #003366;
   --block-enrolled-fg: #ffffff;
   --block-enrolled-edge: #003366;
+  /* Escala secuencial de datos (analítica): una sola, basada en el azul de marca. */
+  --data-1: #e3ebf4;
+  --on-data-1: #14233a;
+  --data-2: #bfd1e5;
+  --on-data-2: #14233a;
+  --data-3: #86a8cb;
+  --on-data-3: #14233a;
+  --data-4: #33699d;
+  --on-data-4: #ffffff;
+  --data-5: #003366;
+  --on-data-5: #ffffff;
   --sheet-bg: rgb(255 255 255 / 0.86);
   --shadow-1: 0 1px 2px rgb(0 51 102 / 0.08);
   --shadow-2: 0 10px 28px -6px rgb(0 51 102 / 0.22), 0 2px 4px rgb(0 51 102 / 0.08);
@@ -135,6 +153,17 @@
     --block-enrolled-bg: #15264a;
     --block-enrolled-fg: #e2e8f0;
     --block-enrolled-edge: #1e6bff;
+    /* Escala secuencial de datos (analítica): una sola, basada en el azul de marca. */
+    --data-1: #15264a;
+    --on-data-1: #e2e8f0;
+    --data-2: #1b3a78;
+    --on-data-2: #e2e8f0;
+    --data-3: #1f5bd1;
+    --on-data-3: #ffffff;
+    --data-4: #4d8bff;
+    --on-data-4: #0a0f1d;
+    --data-5: #9cc3ff;
+    --on-data-5: #0a0f1d;
     --sheet-bg: rgb(18 26 45 / 0.86);
     --shadow-1: none;
     --shadow-2: none;
@@ -177,6 +206,17 @@
   --block-enrolled-bg: #15264a;
   --block-enrolled-fg: #e2e8f0;
   --block-enrolled-edge: #1e6bff;
+  /* Escala secuencial de datos (analítica): una sola, basada en el azul de marca. */
+  --data-1: #15264a;
+  --on-data-1: #e2e8f0;
+  --data-2: #1b3a78;
+  --on-data-2: #e2e8f0;
+  --data-3: #1f5bd1;
+  --on-data-3: #ffffff;
+  --data-4: #4d8bff;
+  --on-data-4: #0a0f1d;
+  --data-5: #9cc3ff;
+  --on-data-5: #0a0f1d;
   --sheet-bg: rgb(18 26 45 / 0.86);
   --shadow-1: none;
   --shadow-2: none;

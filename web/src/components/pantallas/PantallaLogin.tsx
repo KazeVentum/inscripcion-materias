@@ -56,6 +56,7 @@ export function PantallaLogin() {
       guardarSesion({
         token: r.accessToken,
         estudianteId: r.estudianteId,
+        rol: r.rol ?? "estudiante",
         expiraEn: Date.now() + r.expiraEnS * 1000,
       });
       router.replace(destino);

@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import type { Rol } from "@/lib/tipos";
 
 /**
  * Sesión del estudiante. El JWT vive en sessionStorage, no en memoria ni en localStorage:
@@ -11,7 +12,10 @@ import { useSyncExternalStore } from "react";
  */
 export interface Sesion {
   token: string;
+  /** Id del usuario: est-000123 o coord-0001 (el nombre viene de la API de estudiantes). */
   estudianteId: string;
+  /** Rol del JWT. Una sesión guardada sin rol (anterior a la fase 6) es de estudiante. */
+  rol: Rol;
   /** epoch ms en que vence el token. */
   expiraEn: number;
 }
@@ -28,7 +32,8 @@ function parsear(raw: string | null): Sesion | null {
     const s = JSON.parse(raw) as Partial<Sesion>;
     if (typeof s.token !== "string" || typeof s.estudianteId !== "string") return null;
     if (typeof s.expiraEn !== "number" || s.expiraEn <= Date.now()) return null;
-    return { token: s.token, estudianteId: s.estudianteId, expiraEn: s.expiraEn };
+    const rol: Rol = s.rol === "coordinador" ? "coordinador" : "estudiante";
+    return { token: s.token, estudianteId: s.estudianteId, rol, expiraEn: s.expiraEn };
   } catch {
     return null;
   }

@@ -1,5 +1,13 @@
 import type {
+  AuditoriaOut,
   CodigoError,
+  CombinacionesOut,
+  CoordinadorOut,
+  DemandaInsatisfechaOut,
+  DemandaNrcOut,
+  OcupacionFranjaOut,
+  OrdenDemanda,
+  ResumenOut,
   EstadoInscripcionOut,
   AvanceOut,
   HorarioOut,
@@ -131,7 +139,51 @@ export function crearCliente({
     cancelar: (nrc: string) =>
       pedir<EstadoInscripcionOut>(`/inscripciones/${enc(nrc)}`, { metodo: "DELETE" }),
     ticketStream: () => pedir<TicketOut>("/stream/ticket", { metodo: "POST" }),
+
+    // Coordinación (HU5): solo rol coordinador; un estudiante recibe 403 rol_no_permitido.
+    coordinador: (signal?: AbortSignal) => pedir<CoordinadorOut>("/coordinacion/me", opc(signal)),
+    resumen: (signal?: AbortSignal) =>
+      pedir<ResumenOut>("/coordinacion/analitica/resumen", opc(signal)),
+    demandaNrc: (p: ParamsDemandaNrc = {}, signal?: AbortSignal) =>
+      pedir<DemandaNrcOut>(
+        `/coordinacion/analitica/demanda-nrc${consulta({
+          orden: p.orden,
+          limite: p.limite,
+          materiaId: p.materiaId,
+          soloConIntentos: p.soloConIntentos ? "true" : undefined,
+        })}`,
+        opc(signal),
+      ),
+    ocupacionFranja: (signal?: AbortSignal) =>
+      pedir<OcupacionFranjaOut>("/coordinacion/analitica/ocupacion-franja", opc(signal)),
+    combinaciones: (p: { semestre?: number; limite?: number } = {}, signal?: AbortSignal) =>
+      pedir<CombinacionesOut>(
+        `/coordinacion/analitica/combinaciones${consulta({ semestre: p.semestre, limite: p.limite })}`,
+        opc(signal),
+      ),
+    auditoria: (signal?: AbortSignal) =>
+      pedir<AuditoriaOut>("/coordinacion/analitica/auditoria", opc(signal)),
+    demandaInsatisfecha: (limite?: number, signal?: AbortSignal) =>
+      pedir<DemandaInsatisfechaOut>(
+        `/coordinacion/analitica/demanda-insatisfecha${consulta({ limite })}`,
+        opc(signal),
+      ),
   };
+}
+
+export interface ParamsDemandaNrc {
+  orden?: OrdenDemanda;
+  limite?: number;
+  materiaId?: string;
+  soloConIntentos?: boolean;
+}
+
+/** `?a=1&b=x` sin los parámetros vacíos; "" si no queda ninguno. */
+export function consulta(params: Record<string, string | number | undefined>): string {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") q.set(k, String(v));
+  const t = q.toString();
+  return t ? `?${t}` : "";
 }
 
 function opc(signal?: AbortSignal): Opciones {

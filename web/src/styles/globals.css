@@ -35,6 +35,16 @@
   --color-focus: var(--focus);
   --color-seat-free: var(--seat-free);
   --color-seat-taken: var(--seat-taken);
+  --color-data-1: var(--data-1);
+  --color-on-data-1: var(--on-data-1);
+  --color-data-2: var(--data-2);
+  --color-on-data-2: var(--on-data-2);
+  --color-data-3: var(--data-3);
+  --color-on-data-3: var(--on-data-3);
+  --color-data-4: var(--data-4);
+  --color-on-data-4: var(--on-data-4);
+  --color-data-5: var(--data-5);
+  --color-on-data-5: var(--on-data-5);
   --color-placa: var(--placa-logo);
   --color-transparent: transparent;
   --color-current: currentColor;

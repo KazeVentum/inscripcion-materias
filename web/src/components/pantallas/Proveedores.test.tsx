@@ -4,10 +4,20 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { claves, crearQueryClient } from "@/lib/api/consultas";
-import { _reiniciarSesionParaPruebas, cerrarSesion, guardarSesion } from "@/lib/api/sesion";
+import {
+  _reiniciarSesionParaPruebas,
+  cerrarSesion,
+  guardarSesion,
+  type Sesion,
+} from "@/lib/api/sesion";
 import { useLimpiarCachePorSesion } from "./Proveedores";
 
-const sesion = (id: string) => ({ token: "t", estudianteId: id, expiraEn: Date.now() + 60_000 });
+const sesion = (id: string): Sesion => ({
+  token: "t",
+  estudianteId: id,
+  rol: "estudiante",
+  expiraEn: Date.now() + 60_000,
+});
 
 beforeEach(() => {
   window.sessionStorage.clear();
