@@ -95,6 +95,8 @@ services:
     environment:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minio-dev}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minio-dev-secret}
+      MINIO_API_ACCESS_KEY: ${MINIO_API_ACCESS_KEY:?falta MINIO_API_ACCESS_KEY en .env}
+      MINIO_API_SECRET_KEY: ${MINIO_API_SECRET_KEY:?falta MINIO_API_SECRET_KEY en .env}
     entrypoint:
       - /bin/bash
       - -c
@@ -104,6 +106,14 @@ services:
           sleep 2
         done &&
         for b in bronze silver gold; do mc mb --ignore-existing local/$$b; done &&
+        cat > /tmp/gold-lectura.json <<'POL'
+        {"Version":"2012-10-17","Statement":[
+          {"Effect":"Allow","Action":["s3:ListBucket"],"Resource":["arn:aws:s3:::gold"]},
+          {"Effect":"Allow","Action":["s3:GetObject"],"Resource":["arn:aws:s3:::gold/*"]}]}
+        POL
+        mc admin policy create local gold-lectura /tmp/gold-lectura.json &&
+        (mc admin user add local "$$MINIO_API_ACCESS_KEY" "$$MINIO_API_SECRET_KEY" || true) &&
+        mc admin policy attach local gold-lectura --user "$$MINIO_API_ACCESS_KEY" &&
         mc ls local
     networks: [inscripcion]
 
@@ -147,8 +157,8 @@ services:
       RESERVA_TTL_S: ${RESERVA_TTL_S:-300}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
       MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minio-dev}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minio-dev-secret}
+      MINIO_ACCESS_KEY: ${MINIO_API_ACCESS_KEY:?falta MINIO_API_ACCESS_KEY en .env}
+      MINIO_SECRET_KEY: ${MINIO_API_SECRET_KEY:?falta MINIO_API_SECRET_KEY en .env}
       MINIO_SECURE: "false"
     depends_on:
       mongo: { condition: service_healthy }
@@ -200,7 +210,7 @@ services:
     <<: *restart
     mem_limit: 384m
     read_only: true
-    tmpfs: ["/tmp"]
+    tmpfs: ["/tmp:size=160m"]
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     environment:
