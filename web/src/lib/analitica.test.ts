@@ -41,7 +41,7 @@ describe("kpisDe", () => {
     expect(k[2]?.tono).toBe("critico");
   });
   it("la latencia p95 se compara con la meta de 1 s", () => {
-    expect(kpisDe(resumen)[4]).toMatchObject({ tono: "bueno", detalle: "cumple la meta de < 1 s" });
+    expect(kpisDe(resumen)[4]).toMatchObject({ tono: "bueno", detalle: "cumple meta < 1 s" });
     const lenta = kpisDe({ ...resumen, latenciaIntentoP95Ms: 1500 })[4];
     expect(lenta).toMatchObject({ tono: "malo" });
     expect(kpisDe({ ...resumen, latenciaIntentoP95Ms: null })[4]?.tono).toBe("neutro");

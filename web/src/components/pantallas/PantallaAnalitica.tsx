@@ -247,7 +247,10 @@ function DemandaPorNrc() {
         {(d) => (
           <div aria-busy={q.isPlaceholderData}>
             <TablaDemandaNrc items={d.items} orden={orden} onOrden={(o) => setOrden(o)} />
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="m-0 mt-3 text-meta text-text-2">
+              Sillas azules: cupos ocupados. Doradas: NRC lleno que dejó estudiantes sin cupo.
+            </p>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
               <p role="status" className="m-0 text-compact text-text-2 tabular">
                 Mostrando {d.items.length} de {d.total} NRC
               </p>

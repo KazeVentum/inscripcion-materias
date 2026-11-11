@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { ApiUsuario, abrirMateria, cancelarMaterias, entrarPorUi } from "./ayudas";
+import {
+  ApiUsuario,
+  abrirMateria,
+  cancelarMaterias,
+  entrarCoordinadorPorUi,
+  entrarPorUi,
+} from "./ayudas";
 
 test.describe("Móvil 390 px", () => {
   test("tocar un NRC lo prueba en la semana y la bandeja inscribe", async ({ page, request }) => {
@@ -45,6 +51,18 @@ test.describe("Móvil 390 px", () => {
     );
     await entrarPorUi(page, "est-000001");
     await expect(page.getByRole("button", { name: /Lógica Matemática/ })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      390,
+    );
+  });
+});
+
+test.describe("Analítica en móvil 390 px", () => {
+  test("se usa sin desborde horizontal y la tabla pasa a lista", async ({ page }) => {
+    await entrarCoordinadorPorUi(page);
+    await expect(page.getByRole("heading", { name: "Dónde abrir más grupos" })).toBeVisible();
+    await expect(page.getByRole("list", { name: "NRC por demanda" })).toBeVisible();
+    await expect(page.getByRole("table", { name: /Demanda y ocupación por NRC/ })).toBeHidden();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       390,
     );

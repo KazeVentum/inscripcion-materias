@@ -32,18 +32,19 @@ function lugar(i: DemandaNrcItem): string {
 export function TablaDemandaNrc({ items, orden, onOrden }: TablaDemandaNrcProps) {
   return (
     <>
-      <ul className="m-0 grid list-none gap-2 p-0 lg:hidden" aria-label="NRC por demanda">
+      <ul
+        className="m-0 grid list-none grid-cols-[minmax(0,1fr)] gap-2 p-0 lg:hidden"
+        aria-label="NRC por demanda"
+      >
         {items.map((i) => (
           <li key={i.nrc} className="rounded-control border border-border p-3">
-            <div className="flex items-baseline justify-between gap-3">
-              <p className="m-0 min-w-0 truncate text-compact font-semibold">
-                <span className="tabular">{i.nrc}</span> · {i.materia ?? "Sin catálogo"}
-              </p>
-              <p className="m-0 shrink-0 text-meta text-text-2 tabular">{lugar(i)}</p>
-            </div>
+            <p className="m-0 text-compact font-semibold break-words">
+              <span className="tabular">{i.nrc}</span> · {i.materia ?? "Sin catálogo"}
+            </p>
+            <p className="m-0 text-meta text-text-2">{lugar(i)}</p>
             {i.ocupacion !== null && i.cupoTotal ? (
               <div className="mt-2">
-                <BarraOcupacion ocupados={i.ocupados} total={i.cupoTotal} />
+                <BarraOcupacion ocupados={i.ocupados} total={i.cupoTotal} critico={i.sinCupo > 0} />
                 <p className="m-0 mt-1 text-meta text-text-2 tabular">
                   {numero(i.ocupados)} de {numero(i.cupoTotal)} ocupados (
                   {porcentaje(i.ocupacion, 0)})
@@ -125,6 +126,7 @@ export function TablaDemandaNrc({ items, orden, onOrden }: TablaDemandaNrcProps)
                       <BarraOcupacion
                         ocupados={i.ocupados}
                         total={i.cupoTotal}
+                        critico={i.sinCupo > 0}
                         className="w-28 shrink-0"
                       />
                       <span className="text-meta text-text-2">

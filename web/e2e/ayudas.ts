@@ -176,3 +176,12 @@ export async function elegirDuelo(rival: ApiUsuario, yo: ApiUsuario, materiaId: 
   if (!ultimo) throw new Error(`Sin NRC común con alternativa en ${materiaId}: ¿make seed?`);
   return { ultimo: ultimo.nrc, titulo: ultimo.titulo };
 }
+
+/** Entra como coordinador por la UI; el destino es la analítica. */
+export async function entrarCoordinadorPorUi(page: Page, usuario = "coord-0001") {
+  await page.goto("/login");
+  await page.getByLabel("Estudiante o correo").fill(usuario);
+  await page.getByLabel("Contraseña", { exact: true }).fill(clave());
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page).toHaveURL(/\/coordinacion\/analitica/);
+}

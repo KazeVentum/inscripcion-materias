@@ -19,7 +19,8 @@
     "build-storybook": "storybook build -o storybook-static --quiet",
     "screenshots": "node scripts/capturas.mjs",
     "e2e": "playwright test",
-    "screenshots:fase5": "node scripts/capturas-fase5.mjs"
+    "screenshots:fase5": "node scripts/capturas-fase5.mjs",
+    "screenshots:fase6": "node scripts/capturas-fase6.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "5.107.1",

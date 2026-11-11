@@ -177,6 +177,7 @@
 }
 
 /* ------------------------------------------------------- analítica (sillas) */
+/* data-lleno="true" = lleno y con intentos sin cupo (crítico, dorado con contorno). */
 .silla-ocupacion {
   flex: 1 1 0;
   min-width: 0;

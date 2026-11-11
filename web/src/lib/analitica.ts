@@ -66,8 +66,8 @@ export function kpisDe(r: ResumenOut): Kpi[] {
         cumpleMeta === null
           ? "sin intentos"
           : cumpleMeta
-            ? "cumple la meta de < 1 s"
-            : "supera la meta de < 1 s",
+            ? "cumple meta < 1 s"
+            : "supera meta < 1 s",
       tono: cumpleMeta === null ? "neutro" : cumpleMeta ? "bueno" : "malo",
     },
     {
