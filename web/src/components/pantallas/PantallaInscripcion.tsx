@@ -61,7 +61,8 @@ export function PantallaInscripcion() {
   const horarioQ = useHorario();
   const avanceQ = useAvance();
   const [avanceAbierto, setAvanceAbierto] = useState(false);
-  const conexion = useCuposEnVivo();
+  // Solo un estudiante abre el SSE: con otra sesión la guardia redirige sin pedir ticket.
+  const conexion = useCuposEnVivo(sesion?.rol === "estudiante");
   const { fases, alternativas, inscribir } = useInscripcion();
   const cancelar = useCancelar();
   const alto = useAltoVentana();

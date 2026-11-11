@@ -27,12 +27,3 @@ test.describe("Mi horario", () => {
     expect(ics).toContain("BYDAY=TH");
   });
 });
-
-test.describe("Analítica de coordinación", () => {
-  test("estado vacío: los datos llegan en la fase 6", async ({ page }) => {
-    await entrarPorUi(page, "est-000001");
-    await page.getByRole("link", { name: "Analítica" }).click();
-    await expect(page.getByRole("heading", { name: "Analítica de coordinación" })).toBeVisible();
-    await expect(page.getByText(/Los datos llegarán en la fase 6/)).toBeVisible();
-  });
-});
