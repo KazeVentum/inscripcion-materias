@@ -84,9 +84,9 @@ services:
       start_period: 5s
     networks: [inscripcion]
 
-  # --- One-shot: inicializacion (terminan con codigo 0) ---
+  # --- One-shot: inicializacion (terminan con codigo 0). `docker compose up` los corre solos y
+  # api/workers esperan a que terminen bien: buckets, topics y datos existen antes de arrancar.
   minio-init:
-    profiles: ["init"]
     image: bitnamilegacy/minio-client:2025.7.21-debian-12-r2
     mem_limit: 128m
     restart: "no"
@@ -118,7 +118,6 @@ services:
     networks: [inscripcion]
 
   redpanda-init:
-    profiles: ["init"]
     image: redpandadata/redpanda:v24.2.7
     mem_limit: 128m
     restart: "no"
@@ -132,6 +131,28 @@ services:
           rpk topic create $$t -p 3 -r 1 -X brokers=redpanda:9092 || true
         done &&
         rpk topic list -X brokers=redpanda:9092
+    networks: [inscripcion]
+
+  # Datos sinteticos: los genera y carga en Mongo + Redis solo si estan vacios (SEED_FORZAR=1 recarga)
+  seed:
+    build:
+      context: .
+      dockerfile: data/seed/Dockerfile
+    mem_limit: 384m
+    restart: "no"
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      MONGO_URL: mongodb://mongo:27017/inscripcion
+      REDIS_URL: redis://redis:6379/0
+      PERIODO: ${PERIODO:-2027-1}
+      SEED: ${SEED:-20271}
+      SEED_FORZAR: ${SEED_FORZAR:-0}
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
     networks: [inscripcion]
 
   # --- Fase 3: backend (build local; contexto = raiz del repo porque copia services/lua) ---
@@ -164,6 +185,9 @@ services:
       mongo: { condition: service_healthy }
       redis: { condition: service_healthy }
       redpanda: { condition: service_healthy }
+      redpanda-init: { condition: service_completed_successfully }
+      seed: { condition: service_completed_successfully }
+      minio-init: { condition: service_completed_successfully }
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8000/api/v1/health', timeout=4)"]
       interval: 10s
@@ -193,6 +217,8 @@ services:
       mongo: { condition: service_healthy }
       redis: { condition: service_healthy }
       redpanda: { condition: service_healthy }
+      redpanda-init: { condition: service_completed_successfully }
+      seed: { condition: service_completed_successfully }
     healthcheck:
       # el worker no expone HTTP: escribe /tmp/heartbeat cada 5 s mientras su bucle esta vivo
       test: ["CMD", "python", "-c", "import os,time,sys; sys.exit(0 if time.time()-os.path.getmtime('/tmp/heartbeat')<30 else 1)"]
@@ -231,7 +257,10 @@ services:
       mongo: { condition: service_healthy }
       redis: { condition: service_healthy }
       redpanda: { condition: service_healthy }
+      redpanda-init: { condition: service_completed_successfully }
+      seed: { condition: service_completed_successfully }
       minio: { condition: service_healthy }
+      minio-init: { condition: service_completed_successfully }
     healthcheck:
       # sin HTTP: la ingesta escribe /tmp/heartbeat cada 5 s mientras su bucle esta vivo
       test: ["CMD", "python", "-c", "import os,time,sys; sys.exit(0 if time.time()-os.path.getmtime('/tmp/heartbeat')<30 else 1)"]

@@ -1,4 +1,4 @@
-.PHONY: lake-limpiar screenshots up down ps logs clean seed test lint load-test e2e storybook lake simular env
+.PHONY: seed-local lake-limpiar screenshots up down ps logs clean seed test lint load-test e2e storybook lake simular env
 
 # Exporta las variables de .env a los comandos que lo necesiten
 LOAD_ENV = set -a; . ./.env; set +a;
@@ -7,12 +7,8 @@ env:
 	@test -f .env || (cp .env.example .env && echo ".env creado desde .env.example")
 
 up: env
-	# Primero broker y almacenamiento con sus topics y buckets: los workers que se suscriben
-	# antes de que existan los topics los crearian con 1 particion (auto-create de Redpanda)
-	docker compose up -d --build --wait redpanda minio
-	docker compose --profile init run --rm --no-deps minio-init
-	docker compose --profile init run --rm --no-deps redpanda-init
-	# Despues todos los servicios de larga vida; los init (profile "init") son one-shot
+	# Un solo paso: compose corre primero los one-shot (buckets, topics y datos sinteticos si la
+	# base esta vacia) y solo despues arranca api, workers y web. Ver docker-compose.yml.
 	docker compose up -d --build --wait --remove-orphans
 	@docker compose ps
 
@@ -28,7 +24,12 @@ logs:
 clean:
 	docker compose down -v
 
+# Regenera y recarga los datos sinteticos dentro de Docker (borra inscripciones de la demo)
 seed: env
+	docker compose run --rm --build -e SEED_FORZAR=1 seed
+
+# Misma siembra pero con uv en el host (desarrollo del generador; escribe data/seed/out/)
+seed-local: env
 	$(LOAD_ENV) cd data/seed && uv run python -m seed.generate && uv run python -m seed.verify && uv run python -m seed.load
 
 test: env

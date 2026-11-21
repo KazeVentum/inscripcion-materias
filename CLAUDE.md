@@ -334,9 +334,9 @@ tests/load/              k6 y prueba de concurrencia
 
 | Comando | Qué hace |
 | --- | --- |
-| `make up` | levanta todo (`docker compose up -d --wait`) |
+| `make up` | levanta todo en un paso (`docker compose up -d --build --wait`): one-shot `minio-init`, `redpanda-init` y `seed` (siembra solo si Mongo/Redis están vacíos) antes de api, workers y web |
 | `make down` | detiene y borra contenedores |
-| `make seed` | genera datos sintéticos y los carga en Mongo y Redis |
+| `make seed` | regenera y recarga los datos sintéticos en Docker (`seed` con `SEED_FORZAR=1`); `make seed-local` hace lo mismo con `uv` en el host |
 | `make test` | pruebas unitarias e integración (api, worker, lake, web) |
 | `make load-test` | concurrencia (500 vs 10 cupos) + k6 por Docker |
 | `make e2e` | Playwright contra la app levantada |
