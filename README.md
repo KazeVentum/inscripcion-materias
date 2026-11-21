@@ -39,6 +39,9 @@ Eso es todo. `make up`:
 4. **Genera y carga los datos sintéticos** (64 materias, 696 NRC, 3.500 estudiantes) si la base
    está vacía. Si ya tenía datos, los conserva.
 5. Arranca la API, los workers y la web, y espera a que todo esté sano.
+6. **Llena la analítica del coordinador** si el data lake está vacío: 500 estudiantes sintéticos
+   usan la API real (búsquedas, inscripciones, disputas por el último cupo, cancelaciones) y se
+   calcula plata → oro. Corre por detrás y tarda menos de un minuto después de que la web abre.
 
 La primera vez tarda unos minutos (construye las imágenes); después, unos 30 segundos.
 
@@ -81,17 +84,25 @@ Contraseña para todos: `uniminuto2027` (variable `DEMO_PASSWORD` de `.env`).
 | `est-000006` | 3.er semestre, jornada **tarde** (los demás son de noche) |
 | `coord-0001` | Coordinador: página de analítica (HU5) |
 
-### Llenar la analítica del coordinador
+### Analítica del coordinador
 
-La página de analítica lee la capa oro del data lake. Para generarla con tráfico realista:
+La página de analítica (`coord-0001`) lee la capa oro del data lake. `make up` la llena sola la
+primera vez (servicio `analitica-demo`); puedes ver el avance con
+`docker compose logs -f analitica-demo`, que termina en `RESULTADO: los conteos cuadran`.
+
+Para regenerarla con tráfico nuevo:
 
 ```bash
-make lake-limpiar   # vacía bronze/silver/gold (obligatorio después de un make seed)
-make simular        # ~500 estudiantes sintéticos usan la API real
-make lake           # recalcula plata → oro e imprime la cuadratura de conteos
+make analitica      # simula otra tanda de tráfico y recalcula plata → oro
 ```
 
-Luego entra como `coord-0001`. (El `lake-worker` también recalcula solo cada 5 minutos.)
+Después de un `make seed`, empieza limpio para no mezclar eventos viejos:
+
+```bash
+make lake-limpiar && make analitica
+```
+
+El `lake-worker` además recalcula plata y oro cada 5 minutos con lo que llegue.
 
 ## Requisitos para desarrollar (opcional)
 
@@ -112,7 +123,8 @@ Storybook necesitas además:
 | `make clean` | Como `down`, pero borra también los volúmenes |
 | `make ps` / `make logs` | Estado y logs de los servicios |
 | `make seed` | Regenera y recarga los datos sintéticos dentro de Docker; borra las inscripciones de la demo (no correr con tráfico activo) |
-| `make simular` | Tráfico sintético contra la API (`ARGS="--estudiantes 800 --semilla 7"`) |
+| `make analitica` | Simula tráfico y recalcula la analítica, todo en Docker |
+| `make simular` | Tráfico sintético contra la API desde el host, con `uv` (`ARGS="--estudiantes 800 --semilla 7"`) |
 | `make lake` | Recalcula plata y oro; sale con 1 si los conteos no cuadran |
 | `make lake-limpiar` | Vacía los buckets del data lake |
 | `make test` | Pruebas unitarias e integración (seed, api, worker, lake, web, stories) |
@@ -165,9 +177,10 @@ design/                  brief de diseño y reportes de fase
   vuelve a correr `make up`.
 - **Un contenedor se reinicia o queda `unhealthy`:** revisa `make logs` y la memoria asignada a
   Docker (mínimo 4 GB).
-- **La analítica sale vacía:** aún no hay capa oro; corre `make simular && make lake`.
+- **La analítica sale vacía:** espera un minuto tras `make up` y revisa
+  `docker compose logs analitica-demo`. Para forzarla: `make analitica`.
 - **Cifras raras en la analítica tras `make seed`:** quedaron eventos viejos; corre
-  `make lake-limpiar` y vuelve a simular.
+  `make lake-limpiar && make analitica`.
 - **La web no muestra materias ni NRC:** revisa `docker compose logs seed`; debe terminar en
   `OK: Mongo y Redis son consistentes` o en `Datos sintéticos ya cargados`. Para forzar la
   recarga: `make seed`.

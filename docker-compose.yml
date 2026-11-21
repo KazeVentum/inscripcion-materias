@@ -270,6 +270,41 @@ services:
       start_period: 30s
     networks: [inscripcion]
 
+  # Analitica de demostracion: si el lake esta vacio, simula trafico contra la API y calcula
+  # plata -> oro una vez, para que /coordinacion/analitica no arranque vacia (ANALITICA_FORZAR=1 repite)
+  analitica-demo:
+    build:
+      context: .
+      dockerfile: services/lake/Dockerfile
+    command: ["python", "-m", "lake.demo"]
+    mem_limit: 384m
+    restart: "no"
+    read_only: true
+    tmpfs: ["/tmp:size=160m"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      API_URL: http://api:8000
+      DEMO_PASSWORD: ${DEMO_PASSWORD:?falta DEMO_PASSWORD en .env}
+      SEED: ${SEED:-20271}
+      SIM_ESTUDIANTES: ${SIM_ESTUDIANTES:-500}
+      ANALITICA_FORZAR: ${ANALITICA_FORZAR:-0}
+      KAFKA_BROKERS: redpanda:9092
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minio-dev}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minio-dev-secret}
+      MINIO_SECURE: "false"
+      MONGO_URL: mongodb://mongo:27017/inscripcion
+      REDIS_URL: redis://redis:6379/0
+      PERIODO: ${PERIODO:-2027-1}
+      HASH_SALT: ${HASH_SALT:?falta HASH_SALT en .env}
+      LAKE_DUCKDB_MEMORIA: 192MB
+    depends_on:
+      api: { condition: service_healthy }
+      enroll-worker: { condition: service_healthy }
+      lake-worker: { condition: service_healthy }
+    networks: [inscripcion]
+
   # --- Fase 5: web (Next.js standalone; el navegador habla con /api/v1/* y Next lo reenvia a api) ---
   web:
     build:

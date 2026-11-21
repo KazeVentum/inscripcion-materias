@@ -1,4 +1,4 @@
-.PHONY: seed-local lake-limpiar screenshots up down ps logs clean seed test lint load-test e2e storybook lake simular env
+.PHONY: analitica seed-local lake-limpiar screenshots up down ps logs clean seed test lint load-test e2e storybook lake simular env
 
 # Exporta las variables de .env a los comandos que lo necesiten
 LOAD_ENV = set -a; . ./.env; set +a;
@@ -69,6 +69,10 @@ lake: env
 # Vacia bronce, plata y oro (empezar una demo sin eventos viejos)
 lake-limpiar: env
 	$(LOAD_ENV) cd services/lake && uv run python -m lake.cli --limpiar
+
+# Vuelve a simular trafico y recalcula plata -> oro dentro de Docker (servicio analitica-demo)
+analitica: env
+	docker compose run --rm --build -e ANALITICA_FORZAR=1 analitica-demo
 
 # Trafico real contra la API (estudiantes sinteticos, no los demos). Para partir de cero:
 # make seed && make simular && make lake. Opciones: make simular ARGS="--estudiantes 500"

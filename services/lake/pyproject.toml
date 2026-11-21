@@ -6,6 +6,7 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
     "aiokafka~=0.12",
     "duckdb~=1.4",
+    "httpx~=0.28",  # simulador de trafico (make simular, servicio analitica-demo)
     "minio~=7.2",
     "pymongo~=4.13",
     "redis~=5.2",
@@ -13,7 +14,6 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "httpx~=0.28",
     "mypy~=1.15",
     "pytest~=8.3",
     "pytest-asyncio~=0.25",
