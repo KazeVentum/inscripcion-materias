@@ -1,5 +1,7 @@
 # Infraestructura local que simula Azure. Maquina de 8 GB: mem_limit en todo servicio.
-# Lee variables de .env (make up lo crea desde .env.example).
+# Un solo comando en cualquier sistema operativo: `docker compose up -d --build --wait`.
+# .env es opcional: si existe, sus valores mandan; si no, se usan los defaults de abajo, que son
+# los mismos de .env.example (valores SOLO de desarrollo local, ninguno es un secreto real).
 name: inscripcion
 
 x-restart: &restart
@@ -95,8 +97,8 @@ services:
     environment:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minio-dev}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minio-dev-secret}
-      MINIO_API_ACCESS_KEY: ${MINIO_API_ACCESS_KEY:?falta MINIO_API_ACCESS_KEY en .env}
-      MINIO_API_SECRET_KEY: ${MINIO_API_SECRET_KEY:?falta MINIO_API_SECRET_KEY en .env}
+      MINIO_API_ACCESS_KEY: ${MINIO_API_ACCESS_KEY:-api-lector}
+      MINIO_API_SECRET_KEY: ${MINIO_API_SECRET_KEY:-api-lector-secret-dev}
     entrypoint:
       - /bin/bash
       - -c
@@ -172,14 +174,14 @@ services:
       REDIS_URL: redis://redis:6379/0
       KAFKA_BROKERS: redpanda:9092
       PERIODO: ${PERIODO:-2027-1}
-      JWT_SECRET: ${JWT_SECRET:?falta JWT_SECRET en .env}
+      JWT_SECRET: ${JWT_SECRET:-dev-solo-local-secreto-de-32-bytes-o-mas-0123456789}
       JWT_TTL_MIN: ${JWT_TTL_MIN:-60}
-      DEMO_PASSWORD: ${DEMO_PASSWORD:?falta DEMO_PASSWORD en .env}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-uniminuto2027}
       RESERVA_TTL_S: ${RESERVA_TTL_S:-300}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
       MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_API_ACCESS_KEY:?falta MINIO_API_ACCESS_KEY en .env}
-      MINIO_SECRET_KEY: ${MINIO_API_SECRET_KEY:?falta MINIO_API_SECRET_KEY en .env}
+      MINIO_ACCESS_KEY: ${MINIO_API_ACCESS_KEY:-api-lector}
+      MINIO_SECRET_KEY: ${MINIO_API_SECRET_KEY:-api-lector-secret-dev}
       MINIO_SECURE: "false"
     depends_on:
       mongo: { condition: service_healthy }
@@ -248,11 +250,17 @@ services:
       MONGO_URL: mongodb://mongo:27017/inscripcion
       REDIS_URL: redis://redis:6379/0
       PERIODO: ${PERIODO:-2027-1}
-      HASH_SALT: ${HASH_SALT:?falta HASH_SALT en .env}
+      HASH_SALT: ${HASH_SALT:-dev-sal-local}
       LAKE_RECALCULO_MIN: ${LAKE_RECALCULO_MIN:-5}
       LAKE_LOTE_MAX: ${LAKE_LOTE_MAX:-500}
       LAKE_LOTE_MAX_S: ${LAKE_LOTE_MAX_S:-3}
       LAKE_DUCKDB_MEMORIA: 192MB
+      # Al arrancar con el lake vacio simula trafico contra la API y calcula oro (lake/demo.py)
+      ANALITICA_DEMO: ${ANALITICA_DEMO:-1}
+      API_URL: http://api:8000
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-uniminuto2027}
+      SEED: ${SEED:-20271}
+      SIM_ESTUDIANTES: ${SIM_ESTUDIANTES:-500}
     depends_on:
       mongo: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -261,6 +269,7 @@ services:
       seed: { condition: service_completed_successfully }
       minio: { condition: service_healthy }
       minio-init: { condition: service_completed_successfully }
+      api: { condition: service_healthy }
     healthcheck:
       # sin HTTP: la ingesta escribe /tmp/heartbeat cada 5 s mientras su bucle esta vivo
       test: ["CMD", "python", "-c", "import os,time,sys; sys.exit(0 if time.time()-os.path.getmtime('/tmp/heartbeat')<30 else 1)"]
@@ -270,9 +279,10 @@ services:
       start_period: 30s
     networks: [inscripcion]
 
-  # Analitica de demostracion: si el lake esta vacio, simula trafico contra la API y calcula
-  # plata -> oro una vez, para que /coordinacion/analitica no arranque vacia (ANALITICA_FORZAR=1 repite)
+  # Analitica bajo demanda (make analitica): simula otra tanda de trafico y recalcula plata -> oro.
+  # Perfil "demo": no corre con `up`; el lake-worker ya llena la analitica la primera vez.
   analitica-demo:
+    profiles: ["demo"]
     build:
       context: .
       dockerfile: services/lake/Dockerfile
@@ -285,10 +295,10 @@ services:
     security_opt: ["no-new-privileges:true"]
     environment:
       API_URL: http://api:8000
-      DEMO_PASSWORD: ${DEMO_PASSWORD:?falta DEMO_PASSWORD en .env}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-uniminuto2027}
       SEED: ${SEED:-20271}
       SIM_ESTUDIANTES: ${SIM_ESTUDIANTES:-500}
-      ANALITICA_FORZAR: ${ANALITICA_FORZAR:-0}
+      ANALITICA_FORZAR: ${ANALITICA_FORZAR:-1}
       KAFKA_BROKERS: redpanda:9092
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minio-dev}
@@ -297,7 +307,7 @@ services:
       MONGO_URL: mongodb://mongo:27017/inscripcion
       REDIS_URL: redis://redis:6379/0
       PERIODO: ${PERIODO:-2027-1}
-      HASH_SALT: ${HASH_SALT:?falta HASH_SALT en .env}
+      HASH_SALT: ${HASH_SALT:-dev-sal-local}
       LAKE_DUCKDB_MEMORIA: 192MB
     depends_on:
       api: { condition: service_healthy }

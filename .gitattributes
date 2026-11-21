@@ -1,0 +1,10 @@
+# Finales de línea fijos: los archivos que entran a las imágenes Linux (scripts, Lua, Python,
+# YAML) deben tener LF aunque se clone en Windows con core.autocrlf=true.
+* text=auto eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary
+*.parquet binary

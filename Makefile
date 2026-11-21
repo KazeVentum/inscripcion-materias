@@ -72,7 +72,7 @@ lake-limpiar: env
 
 # Vuelve a simular trafico y recalcula plata -> oro dentro de Docker (servicio analitica-demo)
 analitica: env
-	docker compose run --rm --build -e ANALITICA_FORZAR=1 analitica-demo
+	docker compose --profile demo run --rm --build analitica-demo
 
 # Trafico real contra la API (estudiantes sinteticos, no los demos). Para partir de cero:
 # make seed && make simular && make lake. Opciones: make simular ARGS="--estudiantes 500"

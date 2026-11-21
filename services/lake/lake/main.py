@@ -5,9 +5,11 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import os
 import signal
+import time
 
-from . import bronce, pipeline
+from . import bronce, demo, pipeline
 from .config import Settings
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -15,9 +17,30 @@ logging.getLogger("aiokafka").setLevel(logging.WARNING)
 log = logging.getLogger("lake.worker")
 
 
+async def _analitica_demo(s: Settings) -> bool:
+    """Si el lake esta vacio simula trafico y espera a que bronce lo ingiera.
+
+    Devuelve True si conviene recalcular ya. Un fallo aqui no detiene la ingesta.
+    """
+    try:
+        if not await demo.preparar(s):
+            return False
+        limite = time.monotonic() + 120
+        while await bronce.lag(s) and time.monotonic() < limite:
+            await asyncio.sleep(1.5)
+        return True
+    except Exception:
+        log.exception("no se pudo generar la analitica de demostracion; sigue la ingesta normal")
+        return False
+
+
 async def _recalculo(s: Settings, parar: asyncio.Event) -> None:
-    # primer calculo poco despues de arrancar y luego cada `recalculo_min` minutos
+    # primer calculo poco despues de arrancar y luego cada `recalculo_min` minutos.
+    # Con ANALITICA_DEMO=1 y el lake vacio, antes simula trafico y recalcula en cuanto bronce
+    # esta al dia (un solo DuckDB a la vez: mismo bucle).
     espera = 20.0
+    if os.environ.get("ANALITICA_DEMO", "0") == "1" and await _analitica_demo(s):
+        espera = 0.0
     while not parar.is_set():
         with contextlib.suppress(TimeoutError):
             await asyncio.wait_for(parar.wait(), timeout=espera)

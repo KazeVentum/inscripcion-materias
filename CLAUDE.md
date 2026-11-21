@@ -21,7 +21,8 @@ Hoy el estudiante inscribe con un Excel de NRC sin cupos ni validación previa.
   criterios Dado/Cuando/Entonces.
 - Nada de datos personales reales. Todos los estudiantes y docentes son sintéticos
   (Faker `es_CO`, semilla fija `20271`).
-- Sin secretos en el repo: `.env.example` versionado, `.env` ignorado.
+- Sin secretos en el repo: `.env.example` versionado, `.env` ignorado. Los defaults de
+  `docker-compose.yml` repiten los valores de desarrollo de `.env.example` para que `.env` sea opcional.
 
 ### Subagentes (`.claude/agents/`)
 
@@ -334,7 +335,7 @@ tests/load/              k6 y prueba de concurrencia
 
 | Comando | Qué hace |
 | --- | --- |
-| `make up` | levanta todo en un paso (`docker compose up -d --build --wait`): one-shot `minio-init`, `redpanda-init` y `seed` (siembra solo si Mongo/Redis están vacíos) antes de api, workers y web; luego `analitica-demo` (si gold está vacío: simula 500 estudiantes y recalcula plata → oro) |
+| `make up` | levanta todo en un paso (`docker compose up -d --build --wait`): one-shot `minio-init`, `redpanda-init` y `seed` (siembra solo si Mongo/Redis están vacíos) antes de api, workers y web; el `lake-worker` (`ANALITICA_DEMO=1`), si gold está vacío, simula 500 estudiantes y recalcula plata → oro. Sin make: `iniciar.sh`, `iniciar.cmd` o `docker compose up -d --build --wait`; `.env` es opcional (compose trae los defaults de `.env.example`) |
 | `make down` | detiene y borra contenedores |
 | `make seed` | regenera y recarga los datos sintéticos en Docker (`seed` con `SEED_FORZAR=1`); `make seed-local` hace lo mismo con `uv` en el host |
 | `make test` | pruebas unitarias e integración (api, worker, lake, web) |
@@ -342,7 +343,7 @@ tests/load/              k6 y prueba de concurrencia
 | `make e2e` | Playwright contra la app levantada |
 | `make storybook` | Storybook en el puerto 6006 |
 | `make lake` | espera a que bronce esté al día, recalcula plata → oro e imprime los conteos de validación (sale con 1 si no cuadran) |
-| `make analitica` | simula tráfico y recalcula plata → oro en Docker (`analitica-demo` con `ANALITICA_FORZAR=1`) |
+| `make analitica` | simula otra tanda de tráfico y recalcula plata → oro en Docker (`analitica-demo`, perfil `demo`) |
 | `make lake-limpiar` | vacía los buckets `bronze`, `silver` y `gold` (empezar una demo sin eventos viejos) |
 | `make simular` | ~500 estudiantes sintéticos (no los demos 1–6) usan la API real: búsquedas, inscripciones, disputas por el último cupo, cancelaciones, fuera_de_jornada y prerrequisito. `ARGS="--estudiantes 800 --semilla 7"` |
 

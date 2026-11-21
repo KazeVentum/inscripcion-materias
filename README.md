@@ -23,42 +23,49 @@ datos personales reales.
 
 ## Inicio rápido (un solo comando)
 
-Solo necesitas **Docker** (Docker Desktop u OrbStack) abierto y con al menos **4 GB** de RAM.
+Solo necesitas **Docker Desktop** (Windows, macOS o Linux) abierto y con al menos **4 GB** de
+RAM. No hace falta `make`, Python, Node ni crear archivos de configuración.
 
 ```bash
 git clone https://github.com/KazeVentum/inscripcion-materias.git
 cd inscripcion-materias
-make up
 ```
 
-Eso es todo. `make up`:
+Y luego **un** comando, según tu sistema:
 
-1. Crea `.env` desde `.env.example` (valores solo de desarrollo, nada secreto).
-2. Construye las imágenes y levanta Mongo, Redis, Redpanda y MinIO.
-3. Crea los buckets del data lake y los tópicos de eventos.
-4. **Genera y carga los datos sintéticos** (64 materias, 696 NRC, 3.500 estudiantes) si la base
-   está vacía. Si ya tenía datos, los conserva.
-5. Arranca la API, los workers y la web, y espera a que todo esté sano.
-6. **Llena la analítica del coordinador** si el data lake está vacío: 500 estudiantes sintéticos
+| Sistema | Comando |
+| --- | --- |
+| Windows (CMD o PowerShell) | `.\iniciar.cmd` (o doble clic en `iniciar.cmd`) |
+| macOS / Linux / WSL / Git Bash | `./iniciar.sh` |
+| Cualquiera, directo con Docker | `docker compose up -d --build --wait` |
+
+Los tres hacen lo mismo; los scripts además verifican que Docker esté corriendo y al final
+muestran las URLs y los usuarios. Al levantar se hace todo solo:
+
+1. Construye las imágenes y levanta Mongo, Redis, Redpanda y MinIO.
+2. Crea los buckets del data lake y los tópicos de eventos.
+3. **Carga los datos sintéticos** (64 materias, 696 NRC, 3.500 estudiantes) si la base está
+   vacía. Si ya tenía datos, los conserva.
+4. Arranca la API, los workers y la web, y espera a que todo esté sano.
+5. **Llena la analítica del coordinador** si el data lake está vacío: 500 estudiantes sintéticos
    usan la API real (búsquedas, inscripciones, disputas por el último cupo, cancelaciones) y se
-   calcula plata → oro. Corre por detrás y tarda menos de un minuto después de que la web abre.
+   calcula plata → oro. Corre por detrás y termina menos de un minuto después de que abre la web.
 
 La primera vez tarda unos minutos (construye las imágenes); después, unos 30 segundos.
 
-**¿No tienes `make`?** (p. ej. Windows sin WSL) — usa estos dos comandos, que hacen lo mismo:
-
-```bash
-cp .env.example .env            # en PowerShell: Copy-Item .env.example .env
-docker compose up -d --build --wait
-```
+`.env` es **opcional**: `docker-compose.yml` trae por defecto los mismos valores de desarrollo de
+`.env.example` (ninguno es un secreto real). Crea un `.env` solo si quieres cambiar alguno.
 
 **¿Ya lo tenías clonado y te salía vacío, sin materias ni NRC?** Actualiza y vuelve a levantar;
-la siembra detecta la base vacía y la llena sola:
+la base vacía se llena sola:
 
 ```bash
 git pull
-make up
+docker compose up -d --build --wait
 ```
+
+Para detener todo: `docker compose down` (conserva los datos). Para borrar también los datos y
+empezar de cero: `docker compose down -v`.
 
 Cuando termina, abre:
 
@@ -86,20 +93,20 @@ Contraseña para todos: `uniminuto2027` (variable `DEMO_PASSWORD` de `.env`).
 
 ### Analítica del coordinador
 
-La página de analítica (`coord-0001`) lee la capa oro del data lake. `make up` la llena sola la
-primera vez (servicio `analitica-demo`); puedes ver el avance con
-`docker compose logs -f analitica-demo`, que termina en `RESULTADO: los conteos cuadran`.
+La página de analítica (`coord-0001`) lee la capa oro del data lake. El `lake-worker` la llena
+solo la primera vez; el avance se ve con `docker compose logs -f lake-worker` (línea
+`plata/oro recalculados ... cuadra=True`).
 
-Para regenerarla con tráfico nuevo:
+Para regenerarla con otra tanda de tráfico:
 
 ```bash
-make analitica      # simula otra tanda de tráfico y recalcula plata → oro
+docker compose --profile demo run --rm analitica-demo     # o: make analitica
 ```
 
-Después de un `make seed`, empieza limpio para no mezclar eventos viejos:
+Para recargar los datos sintéticos desde cero (borra las inscripciones hechas en la demo):
 
 ```bash
-make lake-limpiar && make analitica
+docker compose run --rm -e SEED_FORZAR=1 seed             # o: make seed
 ```
 
 El `lake-worker` además recalcula plata y oro cada 5 minutos con lo que llegue.
@@ -118,12 +125,12 @@ Storybook necesitas además:
 
 | Comando | Qué hace |
 | --- | --- |
-| `make up` | Levanta todo y espera a que esté sano |
+| `make up` | Igual que `docker compose up -d --build --wait` (y crea `.env`) |
 | `make down` | Detiene y borra los contenedores (conserva los datos) |
 | `make clean` | Como `down`, pero borra también los volúmenes |
 | `make ps` / `make logs` | Estado y logs de los servicios |
 | `make seed` | Regenera y recarga los datos sintéticos dentro de Docker; borra las inscripciones de la demo (no correr con tráfico activo) |
-| `make analitica` | Simula tráfico y recalcula la analítica, todo en Docker |
+| `make analitica` | Simula otra tanda de tráfico y recalcula la analítica, todo en Docker |
 | `make simular` | Tráfico sintético contra la API desde el host, con `uv` (`ARGS="--estudiantes 800 --semilla 7"`) |
 | `make lake` | Recalcula plata y oro; sale con 1 si los conteos no cuadran |
 | `make lake-limpiar` | Vacía los buckets del data lake |
@@ -177,14 +184,17 @@ design/                  brief de diseño y reportes de fase
   vuelve a correr `make up`.
 - **Un contenedor se reinicia o queda `unhealthy`:** revisa `make logs` y la memoria asignada a
   Docker (mínimo 4 GB).
-- **La analítica sale vacía:** espera un minuto tras `make up` y revisa
-  `docker compose logs analitica-demo`. Para forzarla: `make analitica`.
+- **La analítica sale vacía:** espera un minuto tras levantar y revisa
+  `docker compose logs lake-worker`. Para forzarla:
+  `docker compose --profile demo run --rm analitica-demo`.
 - **Cifras raras en la analítica tras `make seed`:** quedaron eventos viejos; corre
   `make lake-limpiar && make analitica`.
 - **La web no muestra materias ni NRC:** revisa `docker compose logs seed`; debe terminar en
   `OK: Mongo y Redis son consistentes` o en `Datos sintéticos ya cargados`. Para forzar la
-  recarga: `make seed`.
-- **Empezar de cero:** `make clean && make up` (borra los volúmenes y vuelve a sembrar).
+  recarga: `docker compose run --rm -e SEED_FORZAR=1 seed`.
+- **Empezar de cero:** `docker compose down -v` y vuelve a levantar (borra datos y analítica).
+- **Windows: errores raros de scripts dentro de los contenedores:** el repo fija finales de línea
+  LF con `.gitattributes`; si clonaste antes de este cambio, vuelve a clonar.
 
 ## Límites conocidos de la simulación
 
