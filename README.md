@@ -39,8 +39,11 @@ Y luego **un** comando, según tu sistema:
 | macOS / Linux / WSL / Git Bash | `./iniciar.sh` |
 | Cualquiera, directo con Docker | `docker compose up -d --build --wait` |
 
-Los tres hacen lo mismo; los scripts además verifican que Docker esté corriendo y al final
-muestran las URLs y los usuarios. Al levantar se hace todo solo:
+Los tres hacen lo mismo; los scripts además verifican que Docker esté instalado y corriendo, y
+al final muestran las URLs y los usuarios. Si `./iniciar.sh` responde "permiso denegado"
+(p. ej. al descargar el ZIP en vez de clonar), usa `sh iniciar.sh`.
+
+Al levantar se hace todo solo:
 
 1. Construye las imágenes y levanta Mongo, Redis, Redpanda y MinIO.
 2. Crea los buckets del data lake y los tópicos de eventos.
@@ -64,9 +67,6 @@ git pull
 docker compose up -d --build --wait
 ```
 
-Para detener todo: `docker compose down` (conserva los datos). Para borrar también los datos y
-empezar de cero: `docker compose down -v`.
-
 Cuando termina, abre:
 
 | Qué | URL |
@@ -79,7 +79,7 @@ Puertos que deben estar libres: 3000, 8000, 6379, 9000, 9001, 19092, 27017.
 
 ### Usuarios de demostración
 
-Contraseña para todos: `uniminuto2027` (variable `DEMO_PASSWORD` de `.env`).
+Contraseña para todos: `uniminuto2027` (variable `DEMO_PASSWORD`).
 
 | Usuario | Para mostrar |
 | --- | --- |
@@ -94,26 +94,29 @@ Contraseña para todos: `uniminuto2027` (variable `DEMO_PASSWORD` de `.env`).
 ### Analítica del coordinador
 
 La página de analítica (`coord-0001`) lee la capa oro del data lake. El `lake-worker` la llena
-solo la primera vez; el avance se ve con `docker compose logs -f lake-worker` (línea
-`plata/oro recalculados ... cuadra=True`).
+sola la primera vez y después la recalcula cada 5 minutos con el tráfico nuevo. El avance se ve
+con `docker compose logs -f lake-worker` (línea `plata/oro recalculados ... cuadra=True`).
 
-Para regenerarla con otra tanda de tráfico:
+## Comandos útiles (solo Docker, cualquier sistema)
 
-```bash
-docker compose --profile demo run --rm analitica-demo     # o: make analitica
-```
+| Qué | Comando |
+| --- | --- |
+| Levantar todo | `docker compose up -d --build --wait` |
+| Ver el estado | `docker compose ps` |
+| Ver logs | `docker compose logs -f --tail=100` (o `... logs -f api`) |
+| Detener (conserva los datos) | `docker compose down` |
+| Borrar todo y empezar de cero | `docker compose down -v` y volver a levantar |
+| Recargar los datos sintéticos¹ | `docker compose run --rm -e SEED_FORZAR=1 seed` |
+| Generar otra tanda de analítica | `docker compose --profile demo run --rm analitica-demo` |
+| Vaciar el data lake | `docker compose exec lake-worker python -m lake.cli --limpiar` |
+| Recalcular plata → oro ya | `docker compose exec lake-worker python -m lake.cli` |
 
-Para recargar los datos sintéticos desde cero (borra las inscripciones hechas en la demo):
-
-```bash
-docker compose run --rm -e SEED_FORZAR=1 seed             # o: make seed
-```
-
-El `lake-worker` además recalcula plata y oro cada 5 minutos con lo que llegue.
+¹ Borra las inscripciones hechas durante la demo. Después conviene vaciar el data lake y generar
+otra tanda de analítica, para no mezclar eventos viejos con los cupos nuevos.
 
 ## Requisitos para desarrollar (opcional)
 
-Para **usar** la app basta Docker. Para correr pruebas, lint, el data lake desde el host o
+Para **usar** la app basta Docker. Para correr pruebas, lint, el simulador desde el host o
 Storybook necesitas además:
 
 - **make**
@@ -121,7 +124,10 @@ Storybook necesitas además:
   `make simular`.
 - **Node.js 24** y npm — pruebas de la web, Storybook y E2E.
 
-## Comandos
+### Atajos con `make`
+
+Para quien tiene `make`. `up`, `down`, `seed` y `analitica` equivalen a los comandos de Docker
+de la tabla anterior; el resto son herramientas de desarrollo.
 
 | Comando | Qué hace |
 | --- | --- |
@@ -132,7 +138,7 @@ Storybook necesitas además:
 | `make seed` | Regenera y recarga los datos sintéticos dentro de Docker; borra las inscripciones de la demo (no correr con tráfico activo) |
 | `make analitica` | Simula otra tanda de tráfico y recalcula la analítica, todo en Docker |
 | `make simular` | Tráfico sintético contra la API desde el host, con `uv` (`ARGS="--estudiantes 800 --semilla 7"`) |
-| `make lake` | Recalcula plata y oro; sale con 1 si los conteos no cuadran |
+| `make lake` | Recalcula plata y oro desde el host; sale con 1 si los conteos no cuadran |
 | `make lake-limpiar` | Vacía los buckets del data lake |
 | `make test` | Pruebas unitarias e integración (seed, api, worker, lake, web, stories) |
 | `make lint` | ruff + mypy `--strict` + typecheck + ESLint/Prettier |
@@ -145,7 +151,7 @@ Antes de `make test`, `make e2e` o `make storybook`, instala las dependencias de
 cd web && npm ci && npx playwright install chromium
 ```
 
-`make test` y `make e2e` necesitan el stack levantado (`make up` ya lo deja sembrado). Los
+`make test` y `make e2e` necesitan el stack levantado (al levantarlo ya queda sembrado). Los
 E2E modifican cupos e inscripciones y los restauran; si se interrumpen, `make seed` deja todo
 como al inicio.
 
@@ -180,26 +186,30 @@ design/                  brief de diseño y reportes de fase
 
 ## Solución de problemas
 
+- **"Docker no está corriendo" / `cannot connect to the Docker daemon`:** abre Docker Desktop,
+  espera a que diga que está listo y vuelve a correr el comando.
 - **Un puerto está ocupado:** detén el proceso que lo usa (p. ej. un Mongo o Redis local) y
-  vuelve a correr `make up`.
-- **Un contenedor se reinicia o queda `unhealthy`:** revisa `make logs` y la memoria asignada a
-  Docker (mínimo 4 GB).
+  vuelve a levantar.
+- **Un contenedor se reinicia o queda `unhealthy`:** revisa `docker compose logs <servicio>` y la
+  memoria asignada a Docker (mínimo 4 GB en Docker Desktop → Settings → Resources).
 - **La analítica sale vacía:** espera un minuto tras levantar y revisa
   `docker compose logs lake-worker`. Para forzarla:
   `docker compose --profile demo run --rm analitica-demo`.
-- **Cifras raras en la analítica tras `make seed`:** quedaron eventos viejos; corre
-  `make lake-limpiar && make analitica`.
+- **Cifras raras en la analítica tras recargar los datos:** quedaron eventos viejos; vacía el
+  data lake (`docker compose exec lake-worker python -m lake.cli --limpiar`) y genera otra tanda
+  (`docker compose --profile demo run --rm analitica-demo`).
 - **La web no muestra materias ni NRC:** revisa `docker compose logs seed`; debe terminar en
   `OK: Mongo y Redis son consistentes` o en `Datos sintéticos ya cargados`. Para forzar la
   recarga: `docker compose run --rm -e SEED_FORZAR=1 seed`.
 - **Empezar de cero:** `docker compose down -v` y vuelve a levantar (borra datos y analítica).
-- **Windows: errores raros de scripts dentro de los contenedores:** el repo fija finales de línea
-  LF con `.gitattributes`; si clonaste antes de este cambio, vuelve a clonar.
+- **Windows: errores raros de scripts dentro de los contenedores** (`\r: command not found`): el
+  repo fija finales de línea LF con `.gitattributes`; si clonaste antes de este cambio, vuelve a
+  clonar.
 
 ## Límites conocidos de la simulación
 
-- Redis es la única copia viva de los cupos durante el periodo; si se pierde, se reconstruye con
-  `make seed` (en producción haría falta un job Mongo → Redis).
+- Redis es la única copia viva de los cupos durante el periodo; si se pierde, se reconstruye
+  recargando los datos sintéticos (en producción haría falta un job Mongo → Redis).
 - Plata y oro se recalculan completos (techo de 1–2 millones de eventos); en producción serían
   incrementales.
 - Los ids de estudiante en el lake están **seudonimizados** (SHA-256 con sal), no anonimizados.
